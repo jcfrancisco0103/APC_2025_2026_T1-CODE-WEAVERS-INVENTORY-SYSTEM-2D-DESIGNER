@@ -277,6 +277,8 @@ def customer_signup_view(request):
             my_customer_group = Group.objects.get_or_create(name='CUSTOMER')
             my_customer_group[0].user_set.add(user)
             login(request, user)  # Log the user in after registration
+            # Toast notification on next page
+            messages.success(request, 'Your account has been registered')
             # Clear cart cookies after registration
             response = redirect('customer-home')
             response.delete_cookie('product_ids')
