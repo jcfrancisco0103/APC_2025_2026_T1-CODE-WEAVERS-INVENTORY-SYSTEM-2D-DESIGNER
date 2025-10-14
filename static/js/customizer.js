@@ -15,9 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
     logo: null,
     logoPlacement: "front",
     logoSize: 0.5,
-    frontNumberPosition: { x: 0, y: 0 },
+    // Number positions no longer controlled by sliders; use drag only
     backNamePosition: { x: 0, y: 0.2 },
-    backNumberPosition: { x: 0, y: 0 },
     logoPosition: { x: 0, y: 0 },
   }
 
@@ -78,12 +77,9 @@ function _addDebugSphereAtWorld(pos, color = 0xff0000, ttl = 3000) {
   const downloadDesignBtn = document.getElementById("download-design")
 
 // Position sliders
-const frontNumberXSlider = document.getElementById("front-number-x")
-const frontNumberYSlider = document.getElementById("front-number-y")
+// Number position sliders removed; users drag numbers directly
 const backNameXSlider = document.getElementById("back-name-x")
 const backNameYSlider = document.getElementById("back-name-y")
-const backNumberXSlider = document.getElementById("back-number-x")
-const backNumberYSlider = document.getElementById("back-number-y")
 const logoXSlider = document.getElementById("logo-x")
 const logoYSlider = document.getElementById("logo-y")
 
@@ -114,10 +110,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     directionalLight.position.set(1, 1, 1)
     scene.add(directionalLight)
 
-    // Add grid helper
-    gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x444444)
-    gridHelper.position.y = -1
-    scene.add(gridHelper)
+    // Removed grid helper to keep scene clean
 
     // Add orbit controls with rotation limits
     controls = new THREE.OrbitControls(camera, renderer.domElement)
@@ -142,7 +135,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
   // Load jersey model based on selected type
   function loadJerseyModel() {
     const loader = new THREE.GLTFLoader()
-    const modelPath = "/static/jersey_customizer/models/t_shirt.gltf"
+    const modelPath = (typeof window !== 'undefined' && window.modelPath) ? window.modelPath : "/static/jersey_customizer/models/t_shirt.gltf"
 
     // Remove existing jersey if any
     if (jersey) {
@@ -208,6 +201,32 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     // onError callback
     (error) => {
       console.error('An error happened while loading the model:', error)
+      // Fallback: create a simple front/back plane so features still work
+      try {
+        jersey = new THREE.Group()
+        const frontPlane = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.8, 1.2),
+          new THREE.MeshStandardMaterial({ color: config.primaryColor, side: THREE.DoubleSide })
+        )
+        frontPlane.position.set(0, -0.2, 0.02)
+        const backPlane = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.8, 1.2),
+          new THREE.MeshStandardMaterial({ color: config.primaryColor, side: THREE.DoubleSide })
+        )
+        backPlane.position.set(0, -0.2, -0.02)
+        backPlane.rotation.y = Math.PI
+        jersey.add(frontPlane)
+        jersey.add(backPlane)
+        scene.add(jersey)
+        bodyMeshes = [frontPlane, backPlane]
+        sleeveMeshes = []
+        applyBodyColor()
+        createTextElements()
+        updateJerseyRotation()
+        console.warn('Fallback jersey planes created due to missing GLTF model')
+      } catch (e2) {
+        console.error('Fallback creation failed:', e2)
+      }
     })
   }
 
@@ -256,7 +275,8 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
       // Attach to jersey so it moves with it
       jersey.add(frontNumberMesh)
       // Position relative to jersey
-      frontNumberMesh.position.set(config.frontNumberPosition.x, config.frontNumberPosition.y, 0.01)
+      // Initial default; user can drag to place anywhere (raised higher)
+      frontNumberMesh.position.set(0.15, 0.55, 0.01)
       frontNumberMesh.rotation.y = Math.PI // Ensure it faces forward
       // Restore dragged world position if available
       if (config.frontNumberWorldPos) {
@@ -316,7 +336,8 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
       // Attach to jersey so it moves with it
       jersey.add(backNumberMesh)
       // Position relative to jersey
-      backNumberMesh.position.set(config.backNumberPosition.x, config.backNumberPosition.y, -0.01)
+      // Initial default; user can drag to place anywhere (raised higher)
+      backNumberMesh.position.set(0, 0.45, -0.01)
       // Restore dragged world position if available
       if (config.backNumberWorldPos) {
         const p = config.backNumberWorldPos
@@ -995,7 +1016,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
   }
 
   // Event listeners for UI controls
-  jerseyTypeSelect.addEventListener("change", function () {
+  if (jerseyTypeSelect) jerseyTypeSelect.addEventListener("change", function () {
     config.jerseyType = this.value
 
     // Update sleeve visibility based on jersey type
@@ -1005,54 +1026,54 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     applySleeveColor(); // Re-apply to ensure visibility affects color
   })
 
-  frontViewBtn.addEventListener("click", () => {
+  if (frontViewBtn) frontViewBtn.addEventListener("click", () => {
     config.currentView = "front"
     updateJerseyRotation()
     updateElementsVisibility()
   })
 
-  backViewBtn.addEventListener("click", () => {
+  if (backViewBtn) backViewBtn.addEventListener("click", () => {
     config.currentView = "back"
     updateJerseyRotation()
     updateElementsVisibility()
   })
 
-  primaryColorInput.addEventListener("input", function () {
+  if (primaryColorInput) primaryColorInput.addEventListener("input", function () {
     config.primaryColor = this.value
     applyBodyColor();
   })
 
-  secondaryColorInput.addEventListener("input", function () {
+  if (secondaryColorInput) secondaryColorInput.addEventListener("input", function () {
     config.secondaryColor = this.value
     applySleeveColor();
   })
 
-  patternSelect.addEventListener("change", function () {
+  if (patternSelect) patternSelect.addEventListener("change", function () {
     config.pattern = this.value
     // Apply pattern to jersey (implementation depends on available patterns)
   })
 
-  frontNumberInput.addEventListener("input", function () {
+  if (frontNumberInput) frontNumberInput.addEventListener("input", function () {
     config.frontNumber = this.value
     createTextElements()
   })
 
-  backNameInput.addEventListener("input", function () {
+  if (backNameInput) backNameInput.addEventListener("input", function () {
     config.backName = this.value
     createTextElements()
   })
 
-  backNumberInput.addEventListener("input", function () {
+  if (backNumberInput) backNumberInput.addEventListener("input", function () {
     config.backNumber = this.value
     createTextElements()
   })
 
-  textColorInput.addEventListener("input", function () {
+  if (textColorInput) textColorInput.addEventListener("input", function () {
     config.textColor = this.value
     createTextElements() // Recreate text elements with new color
   })
 
-  logoUpload.addEventListener("change", (e) => {
+  if (logoUpload) logoUpload.addEventListener("change", (e) => {
     console.log("Logo upload change event triggered")
     if (e.target.files && e.target.files[0]) {
       const reader = new FileReader()
@@ -1068,62 +1089,34 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     }
   })
 
-  logoSizeInput.addEventListener("input", function () {
+  if (logoSizeInput) logoSizeInput.addEventListener("input", function () {
     config.logoSize = Number.parseFloat(this.value)
     createTextElements() // Recreate logo with new size
   })
 
-  logoPlacementSelect.addEventListener("change", function () {
+  if (logoPlacementSelect) logoPlacementSelect.addEventListener("change", function () {
     config.logoPlacement = this.value
     createTextElements()
   })
 
-  // Position slider event listeners
-  frontNumberXSlider.addEventListener("input", function () {
-    config.frontNumberPosition.x = Number.parseFloat(this.value) - 0.5
-    if (frontNumberMesh) {
-      frontNumberMesh.position.x = config.frontNumberPosition.x
-    }
-  })
-
-  frontNumberYSlider.addEventListener("input", function () {
-    // Extend Y range: map 0..1 -> roughly -0.8..0.8
-    config.frontNumberPosition.y = (Number.parseFloat(this.value) - 0.5) * 1.6
-    if (frontNumberMesh) {
-      frontNumberMesh.position.y = config.frontNumberPosition.y
-    }
-  })
-
-  backNameXSlider.addEventListener("input", function () {
+  // Number sliders removed; users drag numbers directly
+  if (backNameXSlider) backNameXSlider.addEventListener("input", function () {
     config.backNamePosition.x = Number.parseFloat(this.value) - 0.5
     if (backNameMesh) {
       backNameMesh.position.x = config.backNamePosition.x
     }
   })
 
-  backNameYSlider.addEventListener("input", function () {
+  if (backNameYSlider) backNameYSlider.addEventListener("input", function () {
     config.backNamePosition.y = Number.parseFloat(this.value) - 0.5
     if (backNameMesh) {
       backNameMesh.position.y = config.backNamePosition.y
     }
   })
 
-  backNumberXSlider.addEventListener("input", function () {
-    config.backNumberPosition.x = Number.parseFloat(this.value) - 0.5
-    if (backNumberMesh) {
-      backNumberMesh.position.x = config.backNumberPosition.x
-    }
-  })
+  // Back number sliders removed; use drag
 
-  backNumberYSlider.addEventListener("input", function () {
-    // Extend Y range: map 0..1 -> roughly -0.8..0.8
-    config.backNumberPosition.y = (Number.parseFloat(this.value) - 0.5) * 1.6
-    if (backNumberMesh) {
-      backNumberMesh.position.y = config.backNumberPosition.y
-    }
-  })
-
-  logoXSlider.addEventListener("input", function () {
+  if (logoXSlider) logoXSlider.addEventListener("input", function () {
     let newX = Number.parseFloat(this.value)
     // Clamp x to slider min/max from HTML (0.25 to 0.75)
     newX = Math.max(0.25, Math.min(0.75, newX))
@@ -1132,7 +1125,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     createTextElements(); // Recreate decal with new position
   })
 
-  logoYSlider.addEventListener("input", function () {
+  if (logoYSlider) logoYSlider.addEventListener("input", function () {
     let newY = Number.parseFloat(this.value)
     // Clamp y to slider min/max from HTML (0.2 to 0.8)
     newY = Math.max(0.2, Math.min(0.8, newY))
@@ -1141,7 +1134,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     createTextElements(); // Recreate decal with new position
   })
 
-  resetViewBtn.addEventListener("click", () => {
+  if (resetViewBtn) resetViewBtn.addEventListener("click", () => {
     camera.position.set(0, 0, 2)
     controls.reset()
   })
@@ -1309,7 +1302,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     el.addEventListener('pointerup', onPointerUp, { passive: false, capture: true })
     el.addEventListener('pointerleave', onPointerUp, { passive: false, capture: true })
   }
-  clearAllBtn.addEventListener("click", () => {
+  if (clearAllBtn) clearAllBtn.addEventListener("click", () => {
     // Reset text inputs
     frontNumberInput.value = ""
     backNameInput.value = ""
@@ -1323,18 +1316,12 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     config.logoPlacement = "front"
 
     // Reset positions
-    config.frontNumberPosition = { x: 0, y: 0 }
     config.backNamePosition = { x: 0, y: 0.2 }
-    config.backNumberPosition = { x: 0, y: 0 }
     config.logoPosition = { x: 0, y: 0.35 }
 
     // Reset sliders
-    frontNumberXSlider.value = 0.5
-    frontNumberYSlider.value = 0.5
     backNameXSlider.value = 0.5
     backNameYSlider.value = 0.7
-    backNumberXSlider.value = 0.5
-    backNumberYSlider.value = 0.5
     logoXSlider.value = 0.5
     logoYSlider.value = 0.85
     logoPlacementSelect.value = "front"
@@ -1360,7 +1347,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     } catch (e) { console.warn('restorePaintedMaterials failed', e) }
   }
 
-  downloadDesignBtn.addEventListener("click", () => {
+  if (downloadDesignBtn) downloadDesignBtn.addEventListener("click", () => {
     downloadMultiViewDesign()
   })
 

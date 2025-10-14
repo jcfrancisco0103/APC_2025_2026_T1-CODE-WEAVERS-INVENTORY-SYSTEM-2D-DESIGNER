@@ -3,8 +3,10 @@ import decimal
 from . import forms,models
 from django.http import HttpResponseRedirect,HttpResponse, JsonResponse
 from django.core.mail import send_mail
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, User
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required,user_passes_test
+from django.views.decorators.cache import never_cache
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.conf import settings
@@ -315,7 +317,11 @@ def customer_login(request):
                 response.delete_cookie(key)
         return response
       else:
-        form.add_error(None, 'Account not found, please register')
+        # Show bottom error via messages when username doesn't exist or password is wrong
+        if not User.objects.filter(username=username).exists():
+          messages.error(request, 'Account not found. Please try again')
+        else:
+          messages.error(request, 'Incorrect password')
   else:
     form = CustomerLoginForm()
   return render(request, 'ecom/customerlogin.html', {'form': form})
@@ -1580,6 +1586,7 @@ def send_feedback_view(request):
 #---------------------------------------------------------------------------------
 @login_required(login_url='customerlogin')
 @user_passes_test(is_customer)
+@never_cache
 def customer_home_view(request):
     products = models.Product.objects.all()
     
@@ -2303,6 +2310,27 @@ def update_address(request):
         customer.street_address = street
         customer.postal_code = request.POST.get('postal_code')
         customer.save()
+
+        # Sync address details to all not-yet-shipped orders (e.g., Pending/Processing)
+        try:
+            new_address = customer.get_full_address
+            origin_region = "NCR"
+            destination_region = customer.region if getattr(customer, 'region', None) else "NCR"
+            new_delivery_fee = Decimal(str(get_shipping_fee(origin_region, destination_region, weight_kg=0.5)))
+
+            Orders.objects.filter(
+                customer=customer,
+                status__in=['Pending', 'Processing', 'Order Confirmed']
+            ).update(
+                address=new_address,
+                email=request.user.email,
+                mobile=str(customer.mobile),
+                delivery_fee=new_delivery_fee
+            )
+        except Exception as e:
+            # Don't block the UX if order sync fails; just log and continue
+            logger.warning(f"Order address sync failed: {e}")
+
         messages.success(request, 'Address updated successfully!')
         return redirect('cart')
     return redirect('cart')
@@ -2465,6 +2493,25 @@ def set_default_address(request, address_id):
             customer.street_address = address.street_address
             customer.postal_code = address.postal_code
             customer.save()
+
+            # Sync updated default address to all not-yet-shipped orders
+            try:
+                new_address = customer.get_full_address
+                origin_region = "NCR"
+                destination_region = customer.region if getattr(customer, 'region', None) else "NCR"
+                new_delivery_fee = Decimal(str(get_shipping_fee(origin_region, destination_region, weight_kg=0.5)))
+
+                Orders.objects.filter(
+                    customer=customer,
+                    status__in=['Pending', 'Processing', 'Order Confirmed']
+                ).update(
+                    address=new_address,
+                    email=request.user.email,
+                    mobile=str(customer.mobile),
+                    delivery_fee=new_delivery_fee
+                )
+            except Exception as e:
+                logger.warning(f"Default address order sync failed: {e}")
             
             return JsonResponse({'status': 'success', 'message': 'Default address updated successfully'})
         except (Customer.DoesNotExist, SavedAddress.DoesNotExist):

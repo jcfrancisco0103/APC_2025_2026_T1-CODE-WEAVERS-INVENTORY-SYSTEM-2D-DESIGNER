@@ -144,13 +144,8 @@
                             <p class="mb-1">Reason: {{ order_dict.order.notes }}</p>
                             {% endif %}
                             {% else %}
-                                {% if order_dict.order.payment_method == 'cod' %}
-                                <p class="mb-1">{{ order_dict.order.customer.get_full_address }}</p>
-                                <p class="mb-1">Contact: {{ order_dict.order.customer.mobile }}</p>
-                                {% else %}
                                 <p class="mb-1">{{ order_dict.order.address }}</p>
                                 <p class="mb-1">Contact: {{ order_dict.order.mobile }}</p>
-                                {% endif %}
                                 {% if order_dict.order.estimated_delivery_date %}
                                 <p class="mb-0">Estimated Delivery: {{ order_dict.order.estimated_delivery_date|date:"M d, Y" }}</p>
                                 {% endif %}

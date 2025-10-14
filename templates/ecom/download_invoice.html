@@ -28,12 +28,7 @@
       <strong>Customer:</strong> {{ customer.get_full_name }}<br>
       <strong>Contact:</strong> {{ customer.mobile }}<br>
       <strong>Address:</strong>
-      {{ customer.street_address }},
-      {% if customer.barangay %}{{ customer.barangay|barangay_name }}, {% endif %}
-      {{ customer.citymun|citymun_name }},
-      {{ customer.province|province_name }},
-      {{ customer.region|region_name }},
-      {{ customer.postal_code }}
+      {{ order.address }}
     </div>
     <table>
       <thead>

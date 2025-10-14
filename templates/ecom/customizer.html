@@ -7,8 +7,14 @@
   <title>GearCraftWorks | Jersey Customizer</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <script src="{% static 'jersey_customizer/js/customizer.js' %}" defer></script>
+  <link rel="stylesheet" href="{% static 'css/customizer.css' %}">
+  <script>
+    window.modelPath = "{% static 'jersey_customizer/models/t_shirt.gltf' %}";
+  </script>
+  <script src="{% static 'js/customizer.js' %}" defer></script>
 </head>
 <body>
   <div class="flex flex-col h-screen">
@@ -37,6 +43,9 @@
               <div class="absolute bottom-4 right-4">
                   <button id="reset-view" class="bg-white text-gray-900 px-4 py-2 rounded shadow hover:bg-gray-100">
                       Reset View
+                  </button>
+                  <button id="toggle-drag" class="ml-2 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">
+                      Enable Drag
                   </button>
               </div>
           </div>
@@ -79,9 +88,10 @@
                       </div>
                       <div id="front-options">
                           <div>
-                              <label class="block mb-2">Number (Upper Right)</label>
+                              <label class="block mb-2">Number</label>
                               <input type="number" id="front-number" class="w-full p-2 border rounded" min="0" max="99">
                           </div>
+                          <p class="text-xs text-gray-500 mt-1">Click "Enable Drag" and drag the number on the jersey.</p>
                       </div>
                       <div id="back-options" style="display: none;">
                           <div>
@@ -92,6 +102,20 @@
                               <label class="block mb-2">Number (Center)</label>
                               <input type="number" id="back-number" class="w-full p-2 border rounded" min="0" max="99">
                           </div>
+                          <div class="mt-2">
+                              <label class="block mb-2">Name Position</label>
+                              <div class="grid grid-cols-2 gap-2">
+                                  <div>
+                                      <label class="text-xs">X Position</label>
+                                      <input type="range" id="back-name-x" min="0" max="1" step="0.01" value="0.5" class="w-full">
+                                  </div>
+                                  <div>
+                                      <label class="text-xs">Y Position</label>
+                                      <input type="range" id="back-name-y" min="0" max="1" step="0.01" value="0.2" class="w-full">
+                                  </div>
+                              </div>
+                          </div>
+                          <p class="text-xs text-gray-500 mt-1">Click "Enable Drag" and drag the back number on the jersey.</p>
                       </div>
                       <div>
                           <label class="block mb-2">Text Color</label>
@@ -101,9 +125,31 @@
                           <label class="block mb-2">Logo</label>
                           <input type="file" id="logo-upload" class="w-full p-2 border rounded" accept="image/*">
                       </div>
-                      <div id="logo-size-container" style="display: none;">
-                          <label class="block mb-2">Logo Size</label>
-                          <input type="range" id="logo-size" min="0.1" max="1" step="0.1" value="0.5" class="w-full">
+                      <div id="logo-options" style="display: none;">
+                          <div class="mt-2">
+                              <label class="block mb-2">Logo Placement</label>
+                              <select id="logo-placement" class="w-full p-2 border rounded">
+                                  <option value="front">Front</option>
+                                  <option value="back">Back</option>
+                              </select>
+                          </div>
+                          <div class="mt-2">
+                              <label class="block mb-2">Logo Size</label>
+                              <input type="range" id="logo-size" min="0.1" max="1" step="0.1" value="0.5" class="w-full">
+                          </div>
+                          <div class="mt-2">
+                              <label class="block mb-2">Logo Position</label>
+                              <div class="grid grid-cols-2 gap-2">
+                                  <div>
+                                      <label class="text-xs">X Position</label>
+                                      <input type="range" id="logo-x" min="0.25" max="0.75" step="0.01" value="0.5" class="w-full">
+                                  </div>
+                                  <div>
+                                      <label class="text-xs">Y Position</label>
+                                      <input type="range" id="logo-y" min="0.2" max="0.8" step="0.01" value="0.5" class="w-full">
+                                  </div>
+                              </div>
+                          </div>
                       </div>
                       <div class="pt-4 border-t border-gray-200 space-y-2">
                           <button id="clear-all" class="w-full p-2 border border-gray-300 rounded hover:bg-gray-50">
@@ -125,8 +171,7 @@
     <!-- Alpine.js for UI interactions -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
-    <!-- Custom JavaScript -->
-    <script src="{% static 'jersey_customizer/js/customizer.js' %}"></script>
+    <!-- Custom JavaScript already loaded in head with defer -->
 
     <!-- Footer -->
     <footer class="bg-gray-900 text-white py-8">

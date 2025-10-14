@@ -326,7 +326,7 @@
 
     {% if saved_addresses %}
       {% for address in saved_addresses %}
-      <div class="address-card {% if address.is_default %}default{% endif %}" data-address-id="{{ address.id }}">
+      <div class="address-card {% if address.is_default %}default{% endif %}" data-address-id="{{ address.id }}" onclick="handleAddressCardClick(event, {{ address.id }})">
         {% if address.is_default %}
           <span class="default-badge">Default</span>
         {% endif %}
@@ -496,6 +496,14 @@
           alert('Error deleting address. Please try again.');
         });
     }
+  }
+
+  // Click anywhere on the address card to set it as default,
+  // but ignore clicks on action buttons inside the card.
+  function handleAddressCardClick(event, addressId) {
+    const isAction = event.target.closest('.address-actions');
+    if (isAction) return; // Let button handlers run
+    setDefaultAddress(addressId);
   }
 
   function showAddressForm() {

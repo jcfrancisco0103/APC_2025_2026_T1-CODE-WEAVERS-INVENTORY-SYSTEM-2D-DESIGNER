@@ -25,7 +25,7 @@ urlpatterns = [
     path('update-stock/<int:item_id>/', update_stock, name='update-stock'),
     path('',views.home_view,name=''),
     path('afterlogin', views.afterlogin_view,name='afterlogin'),
-    path('logout/', LogoutView.as_view(template_name='ecom/logout.html'), name='logout'),
+    path('logout/', LogoutView.as_view(next_page=reverse_lazy('customerlogin')), name='logout'),
     path('about', views.aboutus_view, name='about'),
     path('contactus', views.contactus_view,name='contactus'),
     path('search', views.search_view,name='search'),
@@ -91,6 +91,7 @@ urlpatterns = [
     path('customer-address', views.customer_address_view,name='customer-address'),
     path('payment-success/', views.payment_success_view,name='payment-success'),
     path('customizer/', views.jersey_customizer, name='customizer'),
+    path('jersey-customizer/advanced/', views.jersey_customizer_advanced_view, name='jersey-customizer-advanced'),
 
     path('pre-order', views.pre_order, name='pre_order'),
     path('home', views.home,name='home'),

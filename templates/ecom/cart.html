@@ -779,39 +779,44 @@
       let deliveryFee = parseFloat("{{ delivery_fee|default:'50' }}");
       let vatRate = 0.12;
       
-      // Function to select a saved address as delivery address
+      // Function to select a saved address and set it as default
       function selectAddress(event, addressId, fullAddress) {
-        // Prevent any default behavior
         event.preventDefault();
         event.stopPropagation();
-        
-        // Update the delivery address display
-        const deliveryAddressElement = document.querySelector('.delivery-address');
+
+        // Optimistically update UI
+        const deliveryAddressElement = document.querySelector('.address-text');
         if (deliveryAddressElement) {
-          deliveryAddressElement.innerHTML = `
-            <strong>Delivery Address:</strong><br>
-            ${fullAddress}
-            <button class="btn btn-link btn-sm" onclick="showAddressForm()" style="padding: 0; margin-left: 10px; font-size: 12px;">Change</button>
-          `;
+          deliveryAddressElement.textContent = fullAddress;
         }
-        
-        // Store the selected address ID for checkout
-        const selectedAddressInput = document.getElementById('selected-address-id');
-        if (selectedAddressInput) {
-          selectedAddressInput.value = addressId;
-        }
-        
-        // Update visual selection
         document.querySelectorAll('.saved-address-item').forEach(item => {
           item.style.backgroundColor = item.dataset.default === 'true' ? '#f8fff8' : '#fafafa';
           item.style.borderColor = '#e0e0e0';
         });
-        
-        // Highlight selected address
         event.currentTarget.style.backgroundColor = '#e8f4fd';
         event.currentTarget.style.borderColor = '#007bff';
-        
-        // Selected address updated; removed debug logging to avoid duplicate console outputs
+
+        // Persist selection server-side so checkout uses it and fees update
+        fetch(`/set-default-address/${addressId}/`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+            'Content-Type': 'application/json'
+          }
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success' || data.success) {
+              // Reload to reflect updated delivery fee and address everywhere
+              location.reload();
+            } else {
+              alert(data.message || 'Error selecting address');
+            }
+          })
+          .catch(err => {
+            console.error('Error setting default address:', err);
+            alert('Unable to change address. Please try again.');
+          });
       }
       
       // Function to save new address via AJAX
