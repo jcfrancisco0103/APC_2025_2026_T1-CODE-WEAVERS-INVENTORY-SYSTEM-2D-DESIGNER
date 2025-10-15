@@ -36,6 +36,23 @@ services:
   #   ports:
   #     - "6379:6379"
 
+  # Jenkins CI/CD Service
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins-server
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+    environment:
+      - JENKINS_OPTS=--httpPort=8080
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+    restart: unless-stopped
+
   # Optional: Nginx for production (uncomment if needed)
   # nginx:
   #   image: nginx:alpine
@@ -52,3 +69,4 @@ volumes:
   postgres_data:
   static_volume:
   media_volume:
+  jenkins_home:
