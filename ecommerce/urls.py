@@ -188,6 +188,9 @@ urlpatterns = [
     # AI Designer
     path('ai-designer/', views.ai_designer_view, name='ai-designer'),
 
+    # Admin Transactions
+    path('admin-transactions/', views.admin_transactions_view, name='admin-transactions'),
+
 ]
 
 if settings.DEBUG:

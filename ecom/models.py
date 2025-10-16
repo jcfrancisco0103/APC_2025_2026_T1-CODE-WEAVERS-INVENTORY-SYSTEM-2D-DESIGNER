@@ -83,6 +83,7 @@ class Customer(models.Model):
 
 class InventoryItem(models.Model):
     name = models.CharField(max_length=50)
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=0)
     description = models.TextField(blank=True, null=True)
 
