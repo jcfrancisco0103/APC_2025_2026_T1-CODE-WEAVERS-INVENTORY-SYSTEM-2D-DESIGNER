@@ -21,9 +21,6 @@
                   <button id="reset-view" class="bg-white text-gray-900 px-4 py-2 rounded shadow hover:bg-gray-100">
                       Reset View
                   </button>
-                  <button id="toggle-drag" class="ml-2 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">
-                      Enable Drag
-                  </button>
               </div>
           </div>
 
@@ -64,39 +61,132 @@
                           </select>
                       </div>
                       
+                      <!-- AI Features Section -->
+                      <div class="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+                          <h3 class="text-lg font-semibold mb-3 text-purple-800">AI-Powered Features</h3>
+                          <div class="space-y-3">
+                              <div>
+                                  <label class="flex items-center space-x-2">
+                                      <input type="checkbox" id="ai-enabled" class="rounded border-purple-300 text-purple-600 focus:ring-purple-500">
+                                      <span class="text-sm font-medium text-purple-700">Enable AI Generation</span>
+                                  </label>
+                              </div>
+                              <div id="ai-controls" style="display: none;" class="space-y-3">
+                                  <div>
+                                      <label class="block text-sm font-medium text-purple-700 mb-1">Generation Type</label>
+                                      <select id="ai-generation-type" class="w-full p-2 border border-purple-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                                          <option value="color-scheme">Smart Color Scheme</option>
+                                          <option value="pattern-match">Pattern Matching</option>
+                                          <option value="team-style">Team Style Generator</option>
+                                          <option value="random-design">Random Design</option>
+                                      </select>
+                                  </div>
+                                  <div>
+                                      <label class="block text-sm font-medium text-purple-700 mb-1">AI Creativity Level</label>
+                                      <input type="range" id="ai-creativity" min="1" max="10" value="5" class="w-full h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer">
+                                      <div class="flex justify-between text-xs text-purple-600 mt-1">
+                                          <span>Conservative</span>
+                                          <span>Creative</span>
+                                      </div>
+                                  </div>
+                                  <button id="generate-ai-design" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 px-4 rounded-md hover:from-purple-700 hover:to-blue-700 transition-all duration-200 font-medium">
+                                      Generate AI Design
+                                  </button>
+                              </div>
+                          </div>
+                      </div>
+                      
+                      <!-- Selection Mode Section -->
+                      <div class="bg-gradient-to-r from-green-50 to-teal-50 p-4 rounded-lg border border-green-200">
+                          <h3 class="text-lg font-semibold mb-3 text-green-800">Selection Mode</h3>
+                          <div class="space-y-3">
+                              <div>
+                                  <label class="flex items-center space-x-2">
+                                      <input type="checkbox" id="selection-mode" class="rounded border-green-300 text-green-600 focus:ring-green-500">
+                                      <span class="text-sm font-medium text-green-700">Enable Selection Mode</span>
+                                  </label>
+                              </div>
+                              <div id="selection-instructions" style="display: none;" class="bg-green-100 p-3 rounded-md">
+                                  <p class="text-sm text-green-800 mb-2"><strong>Instructions:</strong></p>
+                                  <ul class="text-xs text-green-700 space-y-1">
+                                      <li>• Click on any element (Name/Number) to select it</li>
+                                      <li>• Use <kbd class="bg-green-200 px-1 rounded">W A S D</kbd> keys to move selected element</li>
+                                      <li>• Selected elements will have a green outline</li>
+                                      <li>• Click elsewhere to deselect</li>
+                                  </ul>
+                              </div>
+                          </div>
+                      </div>
+                      
                       <!-- Front View Options -->
                       <div id="front-options">
                           <div>
                               <label class="block mb-2">Number</label>
-                              <input type="number" id="front-number" class="w-full p-2 border rounded" min="0" max="99" title="Enter front number">
+                              <input type="number" id="front-number" class="w-full p-3 border rounded h-12" min="0" max="99" title="Enter front number">
                           </div>
-                          <p class="text-xs text-gray-500 mt-1">Click "Enable Drag" and drag the number on the jersey.</p>
+                          <div class="mt-2">
+                              <label class="block mb-2">Number Position</label>
+                              <div class="grid grid-cols-3 gap-2">
+                                  <div>
+                                      <label class="text-xs">X Position</label>
+                                      <input type="range" id="front-number-x" min="0" max="1" step="0.01" value="0.7" class="w-full" title="Adjust front number X position">
+                                  </div>
+                                  <div>
+                                      <label class="text-xs">Y Position</label>
+                                      <input type="range" id="front-number-y" min="0" max="1" step="0.01" value="0.2" class="w-full" title="Adjust front number Y position">
+                                  </div>
+                                  <div>
+                                      <label class="text-xs">Z Position (Depth)</label>
+                                      <input type="range" id="front-number-z" min="0.01" max="1.0" step="0.01" value="0.05" class="w-full" title="Adjust front number depth position">
+                                  </div>
+                              </div>
+                          </div>
                       </div>
                       
                       <!-- Back View Options -->
                       <div id="back-options" style="display: none;">
                           <div>
                               <label class="block mb-2">Name</label>
-                              <input type="text" id="back-name" class="w-full p-2 border rounded" maxlength="15" placeholder="Enter back name">
+                              <input type="text" id="back-name" class="w-full p-3 border rounded h-12" maxlength="15" placeholder="Enter back name">
                           </div>
                           <div class="mt-2">
                               <label class="block mb-2">Name Position</label>
-                              <div class="grid grid-cols-2 gap-2">
+                              <div class="grid grid-cols-3 gap-2">
                                   <div>
                                       <label class="text-xs">X Position</label>
                                       <input type="range" id="back-name-x" min="0" max="1" step="0.01" value="0.5" class="w-full" title="Adjust back name X position">
                                   </div>
                                   <div>
                                       <label class="text-xs">Y Position</label>
-                                      <input type="range" id="back-name-y" min="0" max="1" step="0.01" value="0.2" class="w-full" title="Adjust back name Y position">
+                                      <input type="range" id="back-name-y" min="0" max="2" step="0.01" value="0.2" class="w-full" title="Adjust back name Y position">
+                                  </div>
+                                  <div>
+                                      <label class="text-xs">Z Position (Depth)</label>
+                                      <input type="range" id="back-name-z" min="0.01" max="1.0" step="0.01" value="0.05" class="w-full" title="Adjust back name depth position">
                                   </div>
                               </div>
                           </div>
                           <div class="mt-2">
                               <label class="block mb-2">Number</label>
-                              <input type="number" id="back-number" class="w-full p-2 border rounded" min="0" max="99" title="Enter back number">
+                              <input type="number" id="back-number" class="w-full p-3 border rounded h-12" min="0" max="99" title="Enter back number">
                           </div>
-                          <p class="text-xs text-gray-500 mt-1">Click "Enable Drag" and drag the back number on the jersey.</p>
+                          <div class="mt-2">
+                              <label class="block mb-2">Number Position</label>
+                              <div class="grid grid-cols-3 gap-2">
+                                  <div>
+                                      <label class="text-xs">X Position</label>
+                                      <input type="range" id="back-number-x" min="0" max="1" step="0.01" value="0.5" class="w-full" title="Adjust back number X position">
+                                  </div>
+                                  <div>
+                                      <label class="text-xs">Y Position</label>
+                                      <input type="range" id="back-number-y" min="0" max="1" step="0.01" value="0.5" class="w-full" title="Adjust back number Y position">
+                                  </div>
+                                  <div>
+                                      <label class="text-xs">Z Position (Depth)</label>
+                                      <input type="range" id="back-number-z" min="0.01" max="1.0" step="0.01" value="0.05" class="w-full" title="Adjust back number depth position">
+                                  </div>
+                              </div>
+                          </div>
                       </div>
                       
                       <div>
@@ -128,7 +218,7 @@
                                   </div>
                                   <div>
                                       <label class="text-xs">Y Position</label>
-                                      <input type="range" id="logo-y" min="0.2" max="0.8" step="0.01" value="0.5" class="w-full">
+                                      <input type="range" id="logo-y" min="0.2" max="1.8" step="0.01" value="0.5" class="w-full">
                                   </div>
                               </div>
                           </div>
