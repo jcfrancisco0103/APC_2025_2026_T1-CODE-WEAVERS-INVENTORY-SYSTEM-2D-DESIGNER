@@ -141,7 +141,11 @@ LOGIN_REDIRECT_URL='/afterlogin'
 # Add LOGIN_URL to fix redirect to login page URL
 LOGIN_URL = '/customerlogin'
 
+<<<<<<< HEAD
 # Redirect to customer login after logout
+=======
+# Logout redirect URL
+>>>>>>> 840b8f5765cef6bee624262cf144e401dc8bbea3
 LOGOUT_REDIRECT_URL = '/customerlogin'
 
 #for contact us give your gmail id and password
