@@ -6,7 +6,7 @@
 // Check if user is trying to access admin dashboard
 function checkAdminAccess() {
     const currentPath = window.location.pathname;
-    const adminPaths = ['/admin-dashboard', '/admin/', '/view-customer', '/add-product'];
+    const adminPaths = ['/admin/', '/view-customer', '/add-product', '/admin-view-booking'];
     
     // Check if current path is an admin path
     const isAdminPath = adminPaths.some(path => currentPath.includes(path));

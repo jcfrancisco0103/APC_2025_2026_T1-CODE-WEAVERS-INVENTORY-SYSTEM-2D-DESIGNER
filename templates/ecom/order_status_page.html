@@ -153,9 +153,10 @@
                                 <a class="btn btn-primary btn-sm rounded-0" style="text-decoration:none;" href="{% url 'download-invoice' order_dict.order.id %}" target="_blank"><i class="fa fa-download " style="font-size: 12px;height:auto"></i> Download Invoice</a>
                                 <button type="button" class="btn btn-danger btn-sm rounded-0" data-toggle="modal" data-target="#cancelModal{{order_dict.order.id}}"><i class="fa fa-times" style="font-size: 12px;height:auto"></i> Cancel Order</button>
                                 {% elif order_dict.order.status == 'Delivered' and not order_dict.order.customer_received_at %}
-                                <button type="button" class="btn btn-success btn-sm rounded-0" data-toggle="modal" data-target="#receivedModal{{order_dict.order.id}}"><i class="fa fa-check" style="font-size: 12px;height:auto"></i> Received</button>
+                                <button type="button" class="btn btn-success btn-sm rounded-0" onclick="confirmDelivery({{order_dict.order.id}})"><i class="fa fa-check" style="font-size: 12px;height:auto"></i> Delivered</button>
                                 {% elif order_dict.order.status == 'Delivered' and order_dict.order.customer_received_at %}
                                 <span class="badge badge-success">Confirmed Received on {{ order_dict.order.customer_received_at|date:"M d, Y H:i" }}</span>
+                                {% endif %}
                                 
                                 <!-- Cancel Order Modal -->
                                 <div class="modal fade" id="cancelModal{{order_dict.order.id}}" tabindex="-1" role="dialog" aria-labelledby="cancelModalLabel{{order_dict.order.id}}" aria-hidden="true">
@@ -191,45 +192,7 @@
                                     </div>
                                   </div>
                                 </div>
-                                {% endif %}
                                 
-                                <!-- Received Order Modal -->
-                                {% if order_dict.order.status == 'Delivered' and not order_dict.order.customer_received_at %}
-                                <div class="modal fade" id="receivedModal{{order_dict.order.id}}" tabindex="-1" role="dialog" aria-labelledby="receivedModalLabel{{order_dict.order.id}}" aria-hidden="true">
-                                  <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                      <div class="modal-header">
-                                        <h5 class="modal-title" id="receivedModalLabel{{order_dict.order.id}}">Confirm Order Received</h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                          <span aria-hidden="true">&times;</span>
-                                        </button>
-                                      </div>
-                                      <form id="receivedForm{{order_dict.order.id}}" enctype="multipart/form-data">
-                                        {% csrf_token %}
-                                        <div class="modal-body">
-                                          <div class="alert alert-info">
-                                            <strong>Order ID:</strong> {{ order_dict.order.order_ref|default:"N/A" }}<br>
-                                            <strong>Status:</strong> {{ order_dict.order.status }}
-                                          </div>
-                                          <div class="form-group">
-                                            <label for="deliveryProof{{order_dict.order.id}}">Upload Proof of Delivery Photo <span class="text-danger">*</span></label>
-                                            <input type="file" class="form-control-file" id="deliveryProof{{order_dict.order.id}}" name="delivery_proof" accept="image/*" required>
-                                            <small class="form-text text-muted">Please upload a photo showing that you have received the order (e.g., photo of the delivered items).</small>
-                                          </div>
-                                          <div class="form-group">
-                                            <label for="receivedNotes{{order_dict.order.id}}">Additional Notes (Optional)</label>
-                                            <textarea class="form-control" id="receivedNotes{{order_dict.order.id}}" name="notes" rows="3" placeholder="Any additional comments about the delivery..."></textarea>
-                                          </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                          <button type="submit" class="btn btn-success">Confirm Received</button>
-                                        </div>
-                                      </form>
-                                    </div>
-                                  </div>
-                                </div>
-                                {% endif %}
                             {% endif %}
                         </div>
                     </div>
@@ -241,50 +204,36 @@
 </div>
 
 <script>
-// Handle received order form submission
-$(document).ready(function() {
-    $('[id^="receivedForm"]').on('submit', function(e) {
-        e.preventDefault();
-        
-        var form = $(this);
-        var orderId = form.attr('id').replace('receivedForm', '');
-        var formData = new FormData(form[0]);
-        var submitBtn = form.find('button[type="submit"]');
-        var originalText = submitBtn.text();
-        
-        // Disable submit button and show loading
-        submitBtn.prop('disabled', true).text('Processing...');
-        
+// Handle delivery confirmation
+function confirmDelivery(orderId) {
+    if (confirm('Are you sure you want to confirm that this order has been delivered?')) {
         $.ajax({
             url: '/customer/confirm-received/' + orderId + '/',
             type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
             headers: {
                 'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
             },
             success: function(response) {
                 if (response.success) {
-                    alert('Order receipt confirmed successfully!');
+                    alert('Order delivery confirmed successfully!');
                     location.reload(); // Reload page to show updated status
                 } else {
                     alert('Error: ' + response.message);
-                    submitBtn.prop('disabled', false).text(originalText);
                 }
             },
             error: function(xhr, status, error) {
-                var errorMessage = 'An error occurred while confirming receipt.';
+                var errorMessage = 'An error occurred while confirming delivery.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMessage = xhr.responseJSON.message;
                 }
                 alert('Error: ' + errorMessage);
-                submitBtn.prop('disabled', false).text(originalText);
             }
         });
-    });
-    
-    // Show/hide other reason textarea for cancel modal
+    }
+}
+
+// Show/hide other reason textarea for cancel modal
+$(document).ready(function() {
     $('[id^="cancelReason"]').on('change', function() {
         var orderId = $(this).attr('id').replace('cancelReason', '');
         var otherReasonTextarea = $('#otherReason' + orderId);

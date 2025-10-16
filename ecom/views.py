@@ -316,29 +316,24 @@ def customer_signup_view(request):
         if userForm.is_valid() and customerForm.is_valid():
             user = userForm.save(commit=False)
             user.set_password(userForm.cleaned_data['password'])
+            user.is_active = True  # User is active immediately after signup
             user.save()
+            
             customer = customerForm.save(commit=False)
             customer.user = user
-
-            # Keep raw codes (region code and PSGC codes) so choices and lookups work
-            # Names are resolved on display via utils and model properties
-
             customer.save()
+            
             my_customer_group = Group.objects.get_or_create(name='CUSTOMER')
             my_customer_group[0].user_set.add(user)
-            login(request, user)  # Log the user in after registration
-            # Clear cart cookies after registration
-            response = redirect('customer-home')
-            response.delete_cookie('product_ids')
-            # Remove all product_*_details cookies
-            for key in request.COOKIES.keys():
-                if key.startswith('product_') and key.endswith('_details'):
-                    response.delete_cookie(key)
-            return response
+            
+            messages.success(request, 'Registration successful! You can now log in.')
+            return redirect('customerlogin')
         else:
             # Show errors in the template
             mydict = {'userForm': userForm, 'customerForm': customerForm}
     return render(request, 'ecom/customersignup.html', context=mydict)
+
+
 
 def customer_login(request):
   if request.method == 'POST':
@@ -451,7 +446,7 @@ def afterlogin_view(request):
     if is_customer(request.user):
         return redirect('customer-home')
     else:
-        return redirect('admin-dashboard')
+        return redirect('admin-view-booking')
 
 #---------------------------------------------------------------------------------
 #------------------------ ADMIN RELATED VIEWS START ------------------------------
@@ -2258,9 +2253,9 @@ def create_gcash_payment(request):
 
     product_keys = product_ids.split('|')
     product_details = []
-    total_amount = 0
+    subtotal_amount = 0
 
-    # Use a list to preserve order of products as in cart
+    # Calculate product subtotal first
     for key in product_keys:
         cookie_key = f"{key}_details"
         if cookie_key in request.COOKIES:
@@ -2276,7 +2271,7 @@ def create_gcash_payment(request):
                         product = models.Product.objects.get(id=product_id)
                         # Ensure product.price is decimal or float, convert to int cents properly
                         unit_price_cents = int(round(float(product.price) * 100))
-                        total_amount += unit_price_cents * quantity
+                        subtotal_amount += unit_price_cents * quantity
                         print(f"DEBUG: Product: {product.name}, Unit Price: {product.price}, Quantity: {quantity}, Amount (cents): {unit_price_cents * quantity}")
                         product_details.append({
                             "currency": "PHP",
@@ -2289,6 +2284,38 @@ def create_gcash_payment(request):
 
     if not product_details:
         return JsonResponse({"error": "No valid products found"}, status=400)
+
+    # Get customer region for delivery fee calculation
+    customer = None
+    region = None
+    if request.user.is_authenticated:
+        try:
+            customer = models.Customer.objects.get(user=request.user)
+            region = customer.region
+        except models.Customer.DoesNotExist:
+            region = None
+
+    # Calculate delivery fee using same logic as cart
+    origin_region = "NCR"
+    destination_region = region if region else "NCR"
+    delivery_fee = get_shipping_fee(origin_region, destination_region, weight_kg=0.5)
+    delivery_fee_cents = int(round(delivery_fee * 100))
+
+    # Calculate VAT (12% included in subtotal, same as cart logic)
+    subtotal_php = Decimal(subtotal_amount) / Decimal('100')  # Convert cents back to PHP as Decimal
+    vat_amount = subtotal_php * Decimal('0.12') / Decimal('1.12')  # VAT-inclusive calculation
+    vat_amount_cents = int(round(float(vat_amount) * 100))
+
+    # Calculate grand total (subtotal + delivery fee, VAT already included in subtotal)
+    total_amount = subtotal_amount + delivery_fee_cents
+
+    # Add delivery fee as a line item
+    product_details.append({
+        "currency": "PHP",
+        "amount": delivery_fee_cents,
+        "name": "Delivery Fee",
+        "quantity": 1
+    })
 
     payload = {
         "data": {
@@ -3105,7 +3132,7 @@ def delivery_status_page(request, token):
 @login_required
 def customer_confirm_received(request, order_id):
     """
-    Handle customer confirmation of order receipt with photo proof
+    Handle customer confirmation of order delivery
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid request method'})
@@ -3131,36 +3158,23 @@ def customer_confirm_received(request, order_id):
                 'message': 'Order receipt has already been confirmed'
             })
         
-        # Check if photo was uploaded
-        if 'delivery_proof' not in request.FILES:
-            return JsonResponse({
-                'success': False, 
-                'message': 'Delivery proof photo is required'
-            })
-        
-        # Save the delivery proof photo and confirmation timestamp
-        order.delivery_proof_photo = request.FILES['delivery_proof']
+        # Simply confirm delivery without requiring photo upload
         order.customer_received_at = timezone.now()
         order.save()
         
         # Create a delivery status log entry
-        notes = request.POST.get('notes', '').strip()
-        log_notes = f"Customer confirmed receipt with photo proof."
-        if notes:
-            log_notes += f" Customer notes: {notes}"
-        
         models.DeliveryStatusLog.objects.create(
             order=order,
             previous_status='Delivered',
             new_status='Delivered',
             updated_by=request.user,
             update_method='Customer Confirmation',
-            notes=log_notes
+            notes='Customer confirmed delivery receipt.'
         )
         
         return JsonResponse({
             'success': True, 
-            'message': 'Order receipt confirmed successfully!'
+            'message': 'Order delivery confirmed successfully!'
         })
         
     except models.Customer.DoesNotExist:
