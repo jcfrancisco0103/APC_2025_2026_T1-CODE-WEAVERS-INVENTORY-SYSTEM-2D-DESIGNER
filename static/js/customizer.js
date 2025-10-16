@@ -15,10 +15,10 @@ document.addEventListener("DOMContentLoaded", () => {
     logo: null,
     logoPlacement: "front",
     logoSize: 0.5,
-    frontNumberPosition: { x: 0, y: 0 },
-    backNamePosition: { x: 0, y: 0.2 },
-    backNumberPosition: { x: 0, y: 0 },
-    logoPosition: { x: 0, y: 0 },
+    frontNumberPosition: { x: 0, y: 0, z: 0.05 },
+    backNamePosition: { x: 0, y: 0.2, z: 0.05 },
+    backNumberPosition: { x: 0, y: 0, z: 0.05 },
+    logoPosition: { x: 0, y: 0, z: 0.05 },
   }
 
   // Three.js variables
@@ -65,15 +65,24 @@ function _addDebugSphereAtWorld(pos, color = 0xff0000, ttl = 3000) {
   const clearAllBtn = document.getElementById("clear-all")
   const downloadDesignBtn = document.getElementById("download-design")
 
+  // AI Features DOM elements
+  const aiEnabledCheckbox = document.getElementById("ai-enabled")
+  const aiControls = document.getElementById("ai-controls")
+  const aiGenerationTypeSelect = document.getElementById("ai-generation-type")
+  const aiCreativitySlider = document.getElementById("ai-creativity")
+  const generateAiDesignBtn = document.getElementById("generate-ai-design")
+
+  // Selection Mode DOM elements
+  const selectionModeCheckbox = document.getElementById("selection-mode")
+  const selectionInstructions = document.getElementById("selection-instructions")
+
 // Position sliders
-const frontNumberXSlider = document.getElementById("front-number-x")
-const frontNumberYSlider = document.getElementById("front-number-y")
+// Number position sliders removed; users drag numbers directly
 const backNameXSlider = document.getElementById("back-name-x")
 const backNameYSlider = document.getElementById("back-name-y")
-const backNumberXSlider = document.getElementById("back-number-x")
-const backNumberYSlider = document.getElementById("back-number-y")
 const logoXSlider = document.getElementById("logo-x")
 const logoYSlider = document.getElementById("logo-y")
+const logoZSlider = document.getElementById("logo-z")
 
   // Initialize Three.js scene
   function initScene() {
@@ -238,13 +247,17 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
         map: texture,
         transparent: true,
         side: THREE.DoubleSide,
+        depthTest: true,
+        depthWrite: true,
+        alphaTest: 0.1
       })
 
       frontNumberMesh = new THREE.Mesh(geometry, material)
       // Attach to jersey so it moves with it
       jersey.add(frontNumberMesh)
       // Position relative to jersey
-      frontNumberMesh.position.set(config.frontNumberPosition.x, config.frontNumberPosition.y, 0.01)
+      // Initial default; user can drag to place anywhere (raised higher)
+      frontNumberMesh.position.set(0.15, 0.55, 0.01)
       frontNumberMesh.rotation.y = Math.PI // Ensure it faces forward
     }
 
@@ -266,13 +279,16 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
         map: texture,
         transparent: true,
         side: THREE.DoubleSide,
+        depthTest: true,
+        depthWrite: true,
+        alphaTest: 0.1
       })
 
       backNameMesh = new THREE.Mesh(geometry, material)
       // Attach to jersey so it moves with it
       jersey.add(backNameMesh)
-      // Position relative to jersey
-      backNameMesh.position.set(config.backNamePosition.x, config.backNamePosition.y, -0.01)
+      // Position relative to jersey with increased z-offset to prevent bleeding
+      backNameMesh.position.set(config.backNamePosition.x, config.backNamePosition.y, config.backNamePosition.z)
     }
 
     // Create back number
@@ -293,13 +309,22 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
         map: texture,
         transparent: true,
         side: THREE.DoubleSide,
+        depthTest: true,
+        depthWrite: true,
+        alphaTest: 0.1
       })
 
       backNumberMesh = new THREE.Mesh(geometry, material)
       // Attach to jersey so it moves with it
       jersey.add(backNumberMesh)
       // Position relative to jersey
-      backNumberMesh.position.set(config.backNumberPosition.x, config.backNumberPosition.y, -0.01)
+      // Initial default; user can drag to place anywhere (raised higher)
+      backNumberMesh.position.set(0, 0.45, -0.01)
+      // Restore dragged world position if available
+      if (config.backNumberWorldPos) {
+        const p = config.backNumberWorldPos
+        backNumberMesh.position.set(p.x, p.y, p.z)
+      }
     }
 
     // Create logo if available using a decal projection onto the mesh surface
@@ -471,7 +496,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
               let posY = THREE.MathUtils.lerp(bbox.min.y, bbox.max.y, 0.5 + config.logoPosition.y)
               const neckThresholdY = bbox.max.y - (bbox.max.y - bbox.min.y) * 0.18
               posY = Math.min(posY, neckThresholdY)
-              const posZ = THREE.MathUtils.lerp(bbox.min.z, bbox.max.z, 0.5)
+              const posZ = THREE.MathUtils.lerp(bbox.min.z, bbox.max.z, 0.5) + config.logoPosition.z
               const localPos = new THREE.Vector3(posX, posY, posZ)
 
               // convert to world position and project to NDC for raycasting
@@ -1085,21 +1110,9 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     }
   })
 
-  backNumberXSlider.addEventListener("input", function () {
-    config.backNumberPosition.x = Number.parseFloat(this.value) - 0.5
-    if (backNumberMesh) {
-      backNumberMesh.position.x = config.backNumberPosition.x
-    }
-  })
+  // Back number sliders removed; use drag
 
-  backNumberYSlider.addEventListener("input", function () {
-    config.backNumberPosition.y = Number.parseFloat(this.value) - 0.5
-    if (backNumberMesh) {
-      backNumberMesh.position.y = config.backNumberPosition.y
-    }
-  })
-
-  logoXSlider.addEventListener("input", function () {
+  if (logoXSlider) logoXSlider.addEventListener("input", function () {
     let newX = Number.parseFloat(this.value)
     // Clamp x to slider min/max from HTML (0.25 to 0.75)
     newX = Math.max(0.25, Math.min(0.75, newX))
@@ -1117,7 +1130,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     createTextElements(); // Recreate decal with new position
   })
 
-  resetViewBtn.addEventListener("click", () => {
+  if (resetViewBtn) resetViewBtn.addEventListener("click", () => {
     camera.position.set(0, 0, 2)
     controls.reset()
   })
@@ -1177,7 +1190,39 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     downloadMultiViewDesign()
   })
 
-  // Function to apply body color to body meshes
+  // AI Features Event Listeners
+  aiEnabledCheckbox.addEventListener("change", function() {
+    if (this.checked) {
+      aiControls.style.display = "block"
+    } else {
+      aiControls.style.display = "none"
+    }
+  })
+
+  generateAiDesignBtn.addEventListener("click", function() {
+    const generationType = aiGenerationTypeSelect.value
+    const creativityLevel = parseInt(aiCreativitySlider.value)
+    generateAIDesign(generationType, creativityLevel)
+  })
+
+  // Selection Mode Event Listeners
+  selectionModeCheckbox.addEventListener("change", function() {
+    selectionMode = this.checked
+    if (selectionMode) {
+      selectionInstructions.style.display = "block"
+      // Disable orbit controls when selection mode is active
+      if (controls) controls.enabled = false
+    } else {
+      selectionInstructions.style.display = "none"
+      selectedElement = null
+      clearElementSelection()
+      // Re-enable orbit controls
+      if (controls) controls.enabled = true
+    }
+  })
+
+  // Event listeners will be added after initScene() is called
+
   function applyBodyColor() {
     bodyMeshes.forEach(mesh => {
       try {
@@ -1227,4 +1272,6 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
 
   // Initialize the scene
   initScene()
+  // Enable dragging after scene init
+  enableNumberDrag()
 })
