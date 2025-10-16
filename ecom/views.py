@@ -213,7 +213,7 @@ def home_view(request):
     in_stock_only = request.GET.get('in_stock')
     if in_stock_only:
         # Get products that have inventory items with quantity > 0
-        available_products = models.InventoryItem.objects.filter(quantity__gt=0).values_list('product_id', flat=True)
+        available_products = models.InventoryItem.objects.filter(quantity__gt=0).values_list('product__id', flat=True)
         products = products.filter(id__in=available_products)
     
     # Add product ratings and review counts

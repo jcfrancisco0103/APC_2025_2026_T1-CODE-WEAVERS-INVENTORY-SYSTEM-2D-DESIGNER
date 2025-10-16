@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
     frontNumberPosition: { x: 0, y: 0, z: 0.05 },
     backNamePosition: { x: 0, y: 0.2, z: 0.05 },
     backNumberPosition: { x: 0, y: 0, z: 0.05 },
-    logoPosition: { x: 0, y: 0 },
+    logoPosition: { x: 0, y: 0, z: 0.05 },
   }
 
   // Three.js variables
@@ -88,6 +88,7 @@ const backNumberYSlider = document.getElementById("back-number-y")
 const backNumberZSlider = document.getElementById("back-number-z")
 const logoXSlider = document.getElementById("logo-x")
 const logoYSlider = document.getElementById("logo-y")
+const logoZSlider = document.getElementById("logo-z")
 
   // Initialize Three.js scene
   function initScene() {
@@ -494,7 +495,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
               let posY = THREE.MathUtils.lerp(bbox.min.y, bbox.max.y, 0.5 + config.logoPosition.y)
               const neckThresholdY = bbox.max.y - (bbox.max.y - bbox.min.y) * 0.18
               posY = Math.min(posY, neckThresholdY)
-              const posZ = THREE.MathUtils.lerp(bbox.min.z, bbox.max.z, 0.5)
+              const posZ = THREE.MathUtils.lerp(bbox.min.z, bbox.max.z, 0.5) + config.logoPosition.z
               const localPos = new THREE.Vector3(posX, posY, posZ)
 
               // convert to world position and project to NDC for raycasting
@@ -1161,6 +1162,15 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     createTextElements(); // Recreate decal with new position
   })
 
+  logoZSlider.addEventListener("input", function () {
+    let newZ = Number.parseFloat(this.value)
+    // Clamp z to slider min/max from HTML (0.01 to 2.0)
+    newZ = Math.max(0.01, Math.min(2.0, newZ))
+    config.logoPosition.z = newZ
+    this.value = newZ
+    createTextElements(); // Recreate decal with new position
+  })
+
   resetViewBtn.addEventListener("click", () => {
     camera.position.set(0, 0, 2)
     controls.reset()
@@ -1599,6 +1609,10 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
       config.backNumberPosition.x = selectedElement.position.x
       config.backNumberPosition.y = selectedElement.position.y
       config.backNumberPosition.z = selectedElement.position.z
+    } else if (selectedElement === logoMesh || selectedElement === decalMesh) {
+      // For logo/decal, we need to convert world position back to relative position
+      // This is a simplified approach - in practice, you might need more complex conversion
+      config.logoPosition.z = selectedElement.position.z
     }
   }
 })
