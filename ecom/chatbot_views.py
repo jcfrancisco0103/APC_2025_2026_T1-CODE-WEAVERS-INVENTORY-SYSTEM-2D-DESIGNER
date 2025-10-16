@@ -13,6 +13,9 @@ from .models import ChatSession, ChatMessage, ChatbotKnowledge, Customer
 from django.db.models import Q
 import re
 
+# Import admin_required decorator from views
+from .views import admin_required
+
 
 class ChatbotService:
     """Service class to handle chatbot logic and responses"""
@@ -597,17 +600,12 @@ def chatbot_widget(request):
     return render(request, 'ecom/chatbot_widget.html')
 
 
+@admin_required
 @csrf_protect
 @require_http_methods(["GET"])
 def admin_pending_handovers(request):
     """Get list of chat sessions pending admin handover"""
     try:
-        # Check authentication for AJAX requests
-        if not request.user.is_authenticated:
-            return JsonResponse({'error': 'Authentication required'}, status=401)
-        
-        if not request.user.is_staff:
-            return JsonResponse({'error': 'Unauthorized'}, status=403)
         
         pending_sessions = ChatSession.objects.filter(
             handover_status='requested',

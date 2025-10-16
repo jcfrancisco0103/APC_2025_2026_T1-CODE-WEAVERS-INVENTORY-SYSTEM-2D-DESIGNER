@@ -5,16 +5,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GearCraftWorks | Jersey Customizer</title>
+  <!-- Three.js and required libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/customizer.css' %}">
-  <script>
-    window.modelPath = "{% static 'jersey_customizer/models/t_shirt.gltf' %}";
-  </script>
-  <script src="{% static 'js/customizer.js' %}" defer></script>
 </head>
 <body>
   <div class="flex flex-col h-screen">
@@ -24,9 +22,9 @@
               <div class="flex items-center justify-between h-16">
                   <div class="text-white text-xl font-bold">GearCraftWorks</div>
                   <div class="flex space-x-4">
-                      <a href="{% url 'customer-home' %}" class="text-gray-300 hover:text-white px-3 py-2">Home</a>
+                      <a href="{% url 'home' %}" class="text-gray-300 hover:text-white px-3 py-2">Home</a>
                       <a href="{% url 'pre_order' %}" class="text-gray-300 hover:text-white px-3 py-2">Pre-order</a>
-                      <a href="{% url 'customizer' %}" class="text-white px-3 py-2">2d Designer</a>
+                      <a href="{% url 'jersey_customizer' %}" class="text-white px-3 py-2">2d Designer</a>
                       <a href="{% url 'about' %}" class="text-gray-300 hover:text-white px-3 py-2">About Us</a>
                       <a href="{% url 'logout' %}" class="text-gray-300 hover:text-white px-3 py-2">Logout</a>
                   </div>
@@ -44,9 +42,6 @@
                   <button id="reset-view" class="bg-white text-gray-900 px-4 py-2 rounded shadow hover:bg-gray-100">
                       Reset View
                   </button>
-                  <button id="toggle-drag" class="ml-2 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">
-                      Enable Drag
-                  </button>
               </div>
           </div>
 
@@ -57,7 +52,7 @@
                   <div class="space-y-4">
                       <div>
                           <label class="block mb-2">Jersey Type</label>
-                          <select id="jersey-type" class="w-full p-2 border rounded">
+                          <select id="jersey-type" class="w-full p-2 border rounded" title="Select jersey type">
                               <option value="tshirt">T-Shirt Style</option>
                               <option value="sleeveless">Sleeveless Style</option>
                           </select>
@@ -65,58 +60,87 @@
                       <div>
                           <label class="block mb-2">Edit View</label>
                           <div class="flex space-x-2">
-                              <button id="front-view" class="px-4 py-2 rounded bg-white shadow text-gray-900">Front</button>
-                              <button id="back-view" class="px-4 py-2 rounded text-gray-600">Back</button>
+                              <button id="front-view" class="px-4 py-2 rounded bg-gray-200 text-gray-600 shadow">Front</button>
+                              <button id="back-view" class="px-4 py-2 rounded bg-gray-200 text-gray-600">Back</button>
                           </div>
                       </div>
                       <div>
-                          <label class="block mb-2">Primary Color</label>
-                          <input type="color" id="primary-color" value="#ffffff" class="w-full h-10">
+                          <label class="block mb-2">Body Color</label>
+                          <input type="color" id="primary-color" value="#ffffff" class="w-full h-10" title="Select body color">
                       </div>
                       <div>
-                          <label class="block mb-2">Secondary Color</label>
-                          <input type="color" id="secondary-color" value="#000000" class="w-full h-10">
+                          <label class="block mb-2">Sleeve Color</label>
+                          <input type="color" id="secondary-color" value="#ffffff" class="w-full h-10" title="Select sleeve color">
                       </div>
                       <div>
                           <label class="block mb-2">Pattern</label>
-                          <select id="pattern" class="w-full p-2 border rounded">
+                          <select id="pattern" class="w-full p-2 border rounded" title="Select pattern">
                               <option value="none">None</option>
                               {% for pattern in patterns %}
                                   <option value="{{ pattern }}">{{ pattern|title }}</option>
                               {% endfor %}
                           </select>
                       </div>
+                      
+                      <!-- Front View Options -->
                       <div id="front-options">
                           <div>
                               <label class="block mb-2">Number</label>
-                              <input type="number" id="front-number" class="w-full p-2 border rounded" min="0" max="99">
+                              <input type="number" id="front-number" class="w-full p-2 border rounded" min="0" max="99" title="Enter front number">
                           </div>
-                          <p class="text-xs text-gray-500 mt-1">Click "Enable Drag" and drag the number on the jersey.</p>
+                          <div class="mt-2">
+                              <label class="block mb-2">Number Position</label>
+                              <div class="grid grid-cols-2 gap-2">
+                                  <div>
+                                      <label class="text-xs">X Position</label>
+                                      <input type="range" id="front-number-x" min="0" max="1" step="0.01" value="0.7" class="w-full" title="Adjust front number X position">
+                                  </div>
+                                  <div>
+                                      <label class="text-xs">Y Position</label>
+                                      <input type="range" id="front-number-y" min="0" max="1" step="0.01" value="0.2" class="w-full" title="Adjust front number Y position">
+                                  </div>
+                              </div>
+                          </div>
                       </div>
+                      
+                      <!-- Back View Options -->
                       <div id="back-options" style="display: none;">
                           <div>
-                              <label class="block mb-2">Name (Upper Middle)</label>
-                              <input type="text" id="back-name" class="w-full p-2 border rounded" maxlength="15">
-                          </div>
-                          <div>
-                              <label class="block mb-2">Number (Center)</label>
-                              <input type="number" id="back-number" class="w-full p-2 border rounded" min="0" max="99">
+                              <label class="block mb-2">Name</label>
+                              <input type="text" id="back-name" class="w-full p-2 border rounded" maxlength="15" placeholder="Enter back name">
                           </div>
                           <div class="mt-2">
                               <label class="block mb-2">Name Position</label>
                               <div class="grid grid-cols-2 gap-2">
                                   <div>
                                       <label class="text-xs">X Position</label>
-                                      <input type="range" id="back-name-x" min="0" max="1" step="0.01" value="0.5" class="w-full">
+                                      <input type="range" id="back-name-x" min="0" max="1" step="0.01" value="0.5" class="w-full" title="Adjust back name X position">
                                   </div>
                                   <div>
                                       <label class="text-xs">Y Position</label>
-                                      <input type="range" id="back-name-y" min="0" max="1" step="0.01" value="0.2" class="w-full">
+                                      <input type="range" id="back-name-y" min="0" max="1" step="0.01" value="0.2" class="w-full" title="Adjust back name Y position">
                                   </div>
                               </div>
                           </div>
-                          <p class="text-xs text-gray-500 mt-1">Click "Enable Drag" and drag the back number on the jersey.</p>
+                          <div class="mt-2">
+                              <label class="block mb-2">Number</label>
+                              <input type="number" id="back-number" class="w-full p-2 border rounded" min="0" max="99" title="Enter back number">
+                          </div>
+                          <div class="mt-2">
+                              <label class="block mb-2">Number Position</label>
+                              <div class="grid grid-cols-2 gap-2">
+                                  <div>
+                                      <label class="text-xs">X Position</label>
+                                      <input type="range" id="back-number-x" min="0" max="1" step="0.01" value="0.5" class="w-full" title="Adjust back number X position">
+                                  </div>
+                                  <div>
+                                      <label class="text-xs">Y Position</label>
+                                      <input type="range" id="back-number-y" min="0" max="1" step="0.01" value="0.5" class="w-full" title="Adjust back number Y position">
+                                  </div>
+                              </div>
+                          </div>
                       </div>
+                      
                       <div>
                           <label class="block mb-2">Text Color</label>
                           <input type="color" id="text-color" value="#000000" class="w-full h-10">
@@ -155,9 +179,11 @@
                           <button id="clear-all" class="w-full p-2 border border-gray-300 rounded hover:bg-gray-50">
                               Clear All
                           </button>
-                          <button id="download-design" class="w-full p-2 bg-green-600 text-white rounded hover:bg-green-700">
-                              Download Design
-                          </button>
+                          <div class="button-container" >
+                            <button id="download-design" class="download-design">
+                                Download Design
+                            </button>
+                          </div>
                           <a href="{% url 'pre_order' %}" class="block w-full p-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-center">
                               Pre-order This Design
                           </a>
@@ -171,44 +197,47 @@
     <!-- Alpine.js for UI interactions -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
-    <!-- Custom JavaScript already loaded in head with defer -->
+  
 
-    <!-- Footer -->
-    <footer class="bg-gray-900 text-white py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col md:flex-row justify-between">
-                <!-- Company Info -->
-                <div class="mb-4 md:mb-0">
-                    <h3 class="text-xl font-bold">GearCraftWorks</h3>
-                    <p class="mt-2 text-gray-400">Custom Jersey Design</p>
-                </div>
-    
-                <!-- Contact Info -->
-                <div>
-                    <h4 class="text-lg font-semibold">Contact Info</h4>
-                    <p class="mt-2 flex items-center text-gray-400">
-                        📞 <span class="ml-2">0998 854 8632</span>
-                    </p>
-                    <p class="mt-2 flex items-center text-gray-400">
-                        ✉️ <span class="ml-2">wtw104dante@gmail.com</span>
-                    </p>
-                </div>
-    
-                <!-- Categories -->
-                <div>
-                    <h4 class="text-lg font-semibold">Categories</h4>
-                    <p class="mt-2 flex items-center text-gray-400">
-                        👕 <span class="ml-2">Clothing (Brand)</span>
-                    </p>
-                </div>
-            </div>
-    
-            <!-- Copyright -->
-            <div class="mt-6 text-center text-gray-400">
-                &copy; 2025 GearCraftWorks. All rights reserved.
-            </div>
-        </div>
-    </footer>
+      <!-- Footer -->
+      <footer class="bg-gray-900 text-white py-4">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div class="flex flex-col md:flex-row justify-between">
+                  <!-- Company Info -->
+                  <div class="mb-2 md:mb-0">
+                      <h3 class="text-lg font-bold">GearCraftWorks</h3>
+                      <p class="text-sm text-gray-400">Custom Jersey Design</p>
+                  </div>
+      
+                  <!-- Contact Info -->
+                  <div class="text-sm">
+                      <p class="flex items-center text-gray-400">
+                          📞 <span class="ml-2">0998 854 8632</span>
+                      </p>
+                      <p class="flex items-center text-gray-400">
+                          ✉️ <span class="ml-2">wtw104dante@gmail.com</span>
+                      </p>
+                  </div>
+      
+                  <!-- Categories -->
+                  <div class="text-sm">
+                      <p class="flex items-center text-gray-400">
+                          👕 <span class="ml-2">Clothing (Brand)</span>
+                      </p>
+                  </div>
+              </div>
+      
+              <!-- Copyright -->
+              <div class="mt-2 text-center text-xs text-gray-400">
+                  &copy; {% now "Y" %} GearCraftWorks. All rights reserved.
+              </div>
+          </div>
+      </footer>
+  </div> 
 
+   <script>
+    window.modelPath = "{% static 'jersey_customizer/models/t_shirt.gltf' %}";
+  </script>
+  <script src="{% static 'js/customizer.js' %}"></script>
 </body>
 </html>

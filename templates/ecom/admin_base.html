@@ -62,6 +62,10 @@
                 <i data-lucide="box" class="mr-3 h-5 w-5"></i>
                 Inventory
             </a>
+            <a href="{% url 'admin-transactions' %}" class="nav-item {% if request.resolver_match.url_name == 'admin-transactions' %}bg-blue-50 text-blue-700{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                <i data-lucide="credit-card" class="mr-3 h-5 w-5"></i>
+                Transactions
+            </a>
         </nav>
         
         <div class="border-t border-gray-200 p-4">
