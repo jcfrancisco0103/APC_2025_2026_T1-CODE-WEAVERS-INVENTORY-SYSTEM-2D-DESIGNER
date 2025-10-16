@@ -1056,7 +1056,7 @@ def bulk_update_orders(request):
                 # Second pass: Check inventory availability
                 for product_id, update_info in inventory_updates.items():
                     try:
-                        inventory_item = models.InventoryItem.objects.get(product=update_info['product'])
+                        inventory_item = models.InventoryItem.objects.get(name=update_info['product'].name)
                         if inventory_item.quantity >= update_info['quantity_needed']:
                             inventory_item.quantity -= update_info['quantity_needed']
                             inventory_item.save()
@@ -2223,7 +2223,7 @@ def jersey_customizer_3d_view(request):
     return render(request, 'ecom/jersey_customizer_3d.html')
 
 def jersey_customizer(request):
-    return render(request, 'ecom/jersey_customizer.html')
+    return render(request, 'ecom/customizer.html')
 
 def jersey_template(request):
     return render(request, 'ecom/jersey_template.html')
@@ -3136,32 +3136,32 @@ def customer_confirm_received(request, order_id):
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid request method'})
-    
+
     try:
         # Get the customer
         customer = models.Customer.objects.get(user_id=request.user.id)
-        
+
         # Get the order and verify it belongs to the customer
         order = models.Orders.objects.get(id=order_id, customer=customer)
-        
+
         # Check if order is in 'Delivered' status
         if order.status != 'Delivered':
             return JsonResponse({
-                'success': False, 
+                'success': False,
                 'message': 'Order must be marked as delivered before confirming receipt'
             })
-        
+
         # Check if already confirmed
         if order.customer_received_at:
             return JsonResponse({
-                'success': False, 
+                'success': False,
                 'message': 'Order receipt has already been confirmed'
             })
-        
+
         # Simply confirm delivery without requiring photo upload
         order.customer_received_at = timezone.now()
         order.save()
-        
+
         # Create a delivery status log entry
         models.DeliveryStatusLog.objects.create(
             order=order,
@@ -3171,24 +3171,112 @@ def customer_confirm_received(request, order_id):
             update_method='Customer Confirmation',
             notes='Customer confirmed delivery receipt.'
         )
-        
+
         return JsonResponse({
-            'success': True, 
+            'success': True,
             'message': 'Order delivery confirmed successfully!'
         })
-        
+
     except models.Customer.DoesNotExist:
         return JsonResponse({
-            'success': False, 
+            'success': False,
             'message': 'Customer not found'
         })
     except models.Orders.DoesNotExist:
         return JsonResponse({
-            'success': False, 
+            'success': False,
             'message': 'Order not found or does not belong to you'
         })
     except Exception as e:
         return JsonResponse({
-            'success': False, 
+            'success': False,
             'message': f'An error occurred: {str(e)}'
         })
+
+@admin_required
+def admin_transactions_view(request):
+    """
+    Admin view for transactions page
+    """
+    # Get filter parameters
+    month = request.GET.get('month')
+    year = request.GET.get('year')
+    transaction_type = request.GET.get('type')
+    export = request.GET.get('export')
+
+    # Base queryset for completed orders
+    orders = models.Orders.objects.filter(status='Delivered').select_related('customer__user')
+
+    # Apply filters
+    if month:
+        orders = orders.filter(created_at__month=month)
+    if year:
+        orders = orders.filter(created_at__year=year)
+
+    # Calculate summary data
+    total_revenue = sum(float(order.get_total_amount()) for order in orders)
+    current_month = timezone.now().month
+    current_year = timezone.now().year
+    monthly_orders = orders.filter(created_at__month=current_month, created_at__year=current_year)
+    monthly_revenue = sum(float(order.get_total_amount()) for order in monthly_orders)
+    total_transactions = orders.count()
+    avg_transaction = total_revenue / total_transactions if total_transactions > 0 else 0
+
+    # Prepare transactions data
+    transactions = []
+    for order in orders:
+        customer_name = f"{order.customer.user.first_name} {order.customer.user.last_name}" if order.customer and order.customer.user else 'Unknown'
+        customer_id = order.customer.customer_code if order.customer else 'Unknown'
+
+        # Get order items and product details
+        order_items = order.orderitem_set.all()
+        product_details = []
+        for item in order_items:
+            product_details.append(f"{item.product.name} (Size: {item.size}, Qty: {item.quantity})")
+        products_text = ', '.join(product_details) if product_details else 'No products'
+
+        transactions.append({
+            'date': order.created_at.strftime('%Y-%m-%d'),
+            'user_name': customer_name,
+            'customer_id': customer_id,
+            'order_id': order.order_ref or f"ORD-{order.id}",
+            'type': 'credit',  # All completed orders are credits
+            'products': products_text,
+            'amount': float(order.get_total_amount()),
+        })
+
+    # Handle export
+    if export == 'csv':
+        import csv
+        from django.http import HttpResponse
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="transactions-{timezone.now().strftime("%Y-%m-%d")}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Date', 'User', 'Order ID', 'Type', 'Amount'])
+
+        for transaction in transactions:
+            writer.writerow([
+                transaction['date'],
+                transaction['user_name'],
+                transaction['order_id'],
+                transaction['type'],
+                transaction['amount']
+            ])
+
+        return response
+
+    # Get years for filter dropdown
+    years = list(range(timezone.now().year, timezone.now().year - 5, -1))
+
+    context = {
+        'transactions': transactions,
+        'total_revenue': total_revenue,
+        'monthly_revenue': monthly_revenue,
+        'total_transactions': total_transactions,
+        'avg_transaction': avg_transaction,
+        'years': years,
+    }
+
+    return render(request, 'ecom/admin_transactions.html', context)

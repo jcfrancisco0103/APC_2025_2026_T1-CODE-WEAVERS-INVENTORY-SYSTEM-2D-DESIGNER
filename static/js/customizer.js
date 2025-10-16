@@ -15,8 +15,9 @@ document.addEventListener("DOMContentLoaded", () => {
     logo: null,
     logoPlacement: "front",
     logoSize: 0.5,
-    // Number positions no longer controlled by sliders; use drag only
+    frontNumberPosition: { x: 0, y: 0 },
     backNamePosition: { x: 0, y: 0.2 },
+    backNumberPosition: { x: 0, y: 0 },
     logoPosition: { x: 0, y: 0 },
   }
 
@@ -31,17 +32,6 @@ let gridHelper
 const paintedMaterials = new Map()
 // Toggle to visualize debug markers and logs in the scene. Enable from browser console: window.DEBUG = true
 window.DEBUG = window.DEBUG || false
-
-  // Dragging support: state and helpers
-  const dragState = {
-    raycaster: new THREE.Raycaster(),
-    mouse: new THREE.Vector2(),
-    isDragging: false,
-    target: null,
-    side: null,
-  }
-  // Dragging enable toggle (controlled by UI button)
-  let dragEnabled = false
 
 function _addDebugSphereAtWorld(pos, color = 0xff0000, ttl = 3000) {
   try {
@@ -72,14 +62,16 @@ function _addDebugSphereAtWorld(pos, color = 0xff0000, ttl = 3000) {
   const backOptions = document.getElementById("back-options")
   const logoOptions = document.getElementById("logo-options")
   const resetViewBtn = document.getElementById("reset-view")
-  const toggleDragBtn = document.getElementById("toggle-drag")
   const clearAllBtn = document.getElementById("clear-all")
   const downloadDesignBtn = document.getElementById("download-design")
 
 // Position sliders
-// Number position sliders removed; users drag numbers directly
+const frontNumberXSlider = document.getElementById("front-number-x")
+const frontNumberYSlider = document.getElementById("front-number-y")
 const backNameXSlider = document.getElementById("back-name-x")
 const backNameYSlider = document.getElementById("back-name-y")
+const backNumberXSlider = document.getElementById("back-number-x")
+const backNumberYSlider = document.getElementById("back-number-y")
 const logoXSlider = document.getElementById("logo-x")
 const logoYSlider = document.getElementById("logo-y")
 
@@ -110,7 +102,10 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     directionalLight.position.set(1, 1, 1)
     scene.add(directionalLight)
 
-    // Removed grid helper to keep scene clean
+    // Add grid helper
+    gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x444444)
+    gridHelper.position.y = -1
+    scene.add(gridHelper)
 
     // Add orbit controls with rotation limits
     controls = new THREE.OrbitControls(camera, renderer.domElement)
@@ -135,7 +130,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
   // Load jersey model based on selected type
   function loadJerseyModel() {
     const loader = new THREE.GLTFLoader()
-    const modelPath = (typeof window !== 'undefined' && window.modelPath) ? window.modelPath : "/static/jersey_customizer/models/t_shirt.gltf"
+    const modelPath = "/static/jersey_customizer/models/t_shirt.gltf"
 
     // Remove existing jersey if any
     if (jersey) {
@@ -201,32 +196,6 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     // onError callback
     (error) => {
       console.error('An error happened while loading the model:', error)
-      // Fallback: create a simple front/back plane so features still work
-      try {
-        jersey = new THREE.Group()
-        const frontPlane = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.8, 1.2),
-          new THREE.MeshStandardMaterial({ color: config.primaryColor, side: THREE.DoubleSide })
-        )
-        frontPlane.position.set(0, -0.2, 0.02)
-        const backPlane = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.8, 1.2),
-          new THREE.MeshStandardMaterial({ color: config.primaryColor, side: THREE.DoubleSide })
-        )
-        backPlane.position.set(0, -0.2, -0.02)
-        backPlane.rotation.y = Math.PI
-        jersey.add(frontPlane)
-        jersey.add(backPlane)
-        scene.add(jersey)
-        bodyMeshes = [frontPlane, backPlane]
-        sleeveMeshes = []
-        applyBodyColor()
-        createTextElements()
-        updateJerseyRotation()
-        console.warn('Fallback jersey planes created due to missing GLTF model')
-      } catch (e2) {
-        console.error('Fallback creation failed:', e2)
-      }
     })
   }
 
@@ -275,14 +244,8 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
       // Attach to jersey so it moves with it
       jersey.add(frontNumberMesh)
       // Position relative to jersey
-      // Initial default; user can drag to place anywhere (raised higher)
-      frontNumberMesh.position.set(0.15, 0.55, 0.01)
+      frontNumberMesh.position.set(config.frontNumberPosition.x, config.frontNumberPosition.y, 0.01)
       frontNumberMesh.rotation.y = Math.PI // Ensure it faces forward
-      // Restore dragged world position if available
-      if (config.frontNumberWorldPos) {
-        const p = config.frontNumberWorldPos
-        frontNumberMesh.position.set(p.x, p.y, p.z)
-      }
     }
 
     // Create back name
@@ -336,13 +299,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
       // Attach to jersey so it moves with it
       jersey.add(backNumberMesh)
       // Position relative to jersey
-      // Initial default; user can drag to place anywhere (raised higher)
-      backNumberMesh.position.set(0, 0.45, -0.01)
-      // Restore dragged world position if available
-      if (config.backNumberWorldPos) {
-        const p = config.backNumberWorldPos
-        backNumberMesh.position.set(p.x, p.y, p.z)
-      }
+      backNumberMesh.position.set(config.backNumberPosition.x, config.backNumberPosition.y, -0.01)
     }
 
     // Create logo if available using a decal projection onto the mesh surface
@@ -1016,7 +973,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
   }
 
   // Event listeners for UI controls
-  if (jerseyTypeSelect) jerseyTypeSelect.addEventListener("change", function () {
+  jerseyTypeSelect.addEventListener("change", function () {
     config.jerseyType = this.value
 
     // Update sleeve visibility based on jersey type
@@ -1026,54 +983,54 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     applySleeveColor(); // Re-apply to ensure visibility affects color
   })
 
-  if (frontViewBtn) frontViewBtn.addEventListener("click", () => {
+  frontViewBtn.addEventListener("click", () => {
     config.currentView = "front"
     updateJerseyRotation()
     updateElementsVisibility()
   })
 
-  if (backViewBtn) backViewBtn.addEventListener("click", () => {
+  backViewBtn.addEventListener("click", () => {
     config.currentView = "back"
     updateJerseyRotation()
     updateElementsVisibility()
   })
 
-  if (primaryColorInput) primaryColorInput.addEventListener("input", function () {
+  primaryColorInput.addEventListener("input", function () {
     config.primaryColor = this.value
     applyBodyColor();
   })
 
-  if (secondaryColorInput) secondaryColorInput.addEventListener("input", function () {
+  secondaryColorInput.addEventListener("input", function () {
     config.secondaryColor = this.value
     applySleeveColor();
   })
 
-  if (patternSelect) patternSelect.addEventListener("change", function () {
+  patternSelect.addEventListener("change", function () {
     config.pattern = this.value
     // Apply pattern to jersey (implementation depends on available patterns)
   })
 
-  if (frontNumberInput) frontNumberInput.addEventListener("input", function () {
+  frontNumberInput.addEventListener("input", function () {
     config.frontNumber = this.value
     createTextElements()
   })
 
-  if (backNameInput) backNameInput.addEventListener("input", function () {
+  backNameInput.addEventListener("input", function () {
     config.backName = this.value
     createTextElements()
   })
 
-  if (backNumberInput) backNumberInput.addEventListener("input", function () {
+  backNumberInput.addEventListener("input", function () {
     config.backNumber = this.value
     createTextElements()
   })
 
-  if (textColorInput) textColorInput.addEventListener("input", function () {
+  textColorInput.addEventListener("input", function () {
     config.textColor = this.value
     createTextElements() // Recreate text elements with new color
   })
 
-  if (logoUpload) logoUpload.addEventListener("change", (e) => {
+  logoUpload.addEventListener("change", (e) => {
     console.log("Logo upload change event triggered")
     if (e.target.files && e.target.files[0]) {
       const reader = new FileReader()
@@ -1089,34 +1046,60 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     }
   })
 
-  if (logoSizeInput) logoSizeInput.addEventListener("input", function () {
+  logoSizeInput.addEventListener("input", function () {
     config.logoSize = Number.parseFloat(this.value)
     createTextElements() // Recreate logo with new size
   })
 
-  if (logoPlacementSelect) logoPlacementSelect.addEventListener("change", function () {
+  logoPlacementSelect.addEventListener("change", function () {
     config.logoPlacement = this.value
     createTextElements()
   })
 
-  // Number sliders removed; users drag numbers directly
-  if (backNameXSlider) backNameXSlider.addEventListener("input", function () {
+  // Position slider event listeners
+  frontNumberXSlider.addEventListener("input", function () {
+    config.frontNumberPosition.x = Number.parseFloat(this.value) - 0.5
+    if (frontNumberMesh) {
+      frontNumberMesh.position.x = config.frontNumberPosition.x
+    }
+  })
+
+  frontNumberYSlider.addEventListener("input", function () {
+    config.frontNumberPosition.y = Number.parseFloat(this.value) - 0.5
+    if (frontNumberMesh) {
+      frontNumberMesh.position.y = config.frontNumberPosition.y
+    }
+  })
+
+  backNameXSlider.addEventListener("input", function () {
     config.backNamePosition.x = Number.parseFloat(this.value) - 0.5
     if (backNameMesh) {
       backNameMesh.position.x = config.backNamePosition.x
     }
   })
 
-  if (backNameYSlider) backNameYSlider.addEventListener("input", function () {
+  backNameYSlider.addEventListener("input", function () {
     config.backNamePosition.y = Number.parseFloat(this.value) - 0.5
     if (backNameMesh) {
       backNameMesh.position.y = config.backNamePosition.y
     }
   })
 
-  // Back number sliders removed; use drag
+  backNumberXSlider.addEventListener("input", function () {
+    config.backNumberPosition.x = Number.parseFloat(this.value) - 0.5
+    if (backNumberMesh) {
+      backNumberMesh.position.x = config.backNumberPosition.x
+    }
+  })
 
-  if (logoXSlider) logoXSlider.addEventListener("input", function () {
+  backNumberYSlider.addEventListener("input", function () {
+    config.backNumberPosition.y = Number.parseFloat(this.value) - 0.5
+    if (backNumberMesh) {
+      backNumberMesh.position.y = config.backNumberPosition.y
+    }
+  })
+
+  logoXSlider.addEventListener("input", function () {
     let newX = Number.parseFloat(this.value)
     // Clamp x to slider min/max from HTML (0.25 to 0.75)
     newX = Math.max(0.25, Math.min(0.75, newX))
@@ -1125,7 +1108,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     createTextElements(); // Recreate decal with new position
   })
 
-  if (logoYSlider) logoYSlider.addEventListener("input", function () {
+  logoYSlider.addEventListener("input", function () {
     let newY = Number.parseFloat(this.value)
     // Clamp y to slider min/max from HTML (0.2 to 0.8)
     newY = Math.max(0.2, Math.min(0.8, newY))
@@ -1134,175 +1117,12 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     createTextElements(); // Recreate decal with new position
   })
 
-  if (resetViewBtn) resetViewBtn.addEventListener("click", () => {
+  resetViewBtn.addEventListener("click", () => {
     camera.position.set(0, 0, 2)
     controls.reset()
   })
 
-  // Toggle dragging via button
-  if (toggleDragBtn) {
-    toggleDragBtn.addEventListener("click", () => {
-      dragEnabled = !dragEnabled
-      // Update button label and style
-      if (dragEnabled) {
-        toggleDragBtn.textContent = "Disable Drag"
-        toggleDragBtn.classList.remove("bg-blue-600", "hover:bg-blue-700")
-        toggleDragBtn.classList.add("bg-green-600", "hover:bg-green-700")
-        // Disable orbit controls while drag mode is enabled
-        if (controls) {
-          controls.enabled = false
-          if (typeof controls.enableRotate !== 'undefined') controls.enableRotate = false
-          if (typeof controls.enablePan !== 'undefined') controls.enablePan = false
-        }
-        // Visual cue
-        if (renderer && renderer.domElement) renderer.domElement.style.cursor = 'grab'
-      } else {
-        toggleDragBtn.textContent = "Enable Drag"
-        toggleDragBtn.classList.remove("bg-green-600", "hover:bg-green-700")
-        toggleDragBtn.classList.add("bg-blue-600", "hover:bg-blue-700")
-        // Re-enable orbit controls when drag mode is disabled
-        if (controls) {
-          controls.enabled = true
-          if (typeof controls.enableRotate !== 'undefined') controls.enableRotate = true
-          if (typeof controls.enablePan !== 'undefined') controls.enablePan = true
-        }
-        if (renderer && renderer.domElement) renderer.domElement.style.cursor = 'default'
-      }
-    })
-  }
-
-  // Helper: pick target body mesh for a side
-  function getBodyMeshForSide(side) {
-    const candidates = []
-    const pushCandidate = (m) => {
-      try {
-        if (!m.geometry) return
-        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox()
-        const bb = m.geometry.boundingBox
-        const size = new THREE.Vector3(); bb.getSize(size)
-        const vol = Math.max(0.0001, size.x * size.y * size.z)
-        const center = new THREE.Vector3(); bb.getCenter(center); m.localToWorld(center)
-        candidates.push({ mesh: m, center, vol })
-      } catch (e) { /* ignore */ }
-    }
-    if (bodyMeshes && bodyMeshes.length) bodyMeshes.forEach(pushCandidate)
-    if (!candidates.length && jersey) jersey.traverse(obj => { if (obj.isMesh) pushCandidate(obj) })
-    if (!candidates.length) return null
-    candidates.sort((a, b) => {
-      const zCmp = side === 'front' ? (b.center.z - a.center.z) : (a.center.z - b.center.z)
-      return zCmp !== 0 ? zCmp : (b.vol - a.vol)
-    })
-    return candidates[0].mesh
-  }
-
-  // Enable dragging of number planes across the jersey surface
-  function enableNumberDrag() {
-    if (!renderer || !renderer.domElement) return
-    const el = renderer.domElement
-
-    function toNDC(e) {
-      const rect = el.getBoundingClientRect()
-      const x = (e.clientX - rect.left) / rect.width
-      const y = (e.clientY - rect.top) / rect.height
-      dragState.mouse.set(x * 2 - 1, -(y * 2 - 1))
-    }
-
-    function onPointerDown(e) {
-      // If drag mode is enabled, block OrbitControls from handling this event
-      if (dragEnabled) { try { e.stopPropagation() } catch {} }
-      if (!dragEnabled) return
-      toNDC(e)
-      const picks = []
-      if (frontNumberMesh && frontNumberMesh.visible !== false) picks.push(frontNumberMesh)
-      if (backNumberMesh && backNumberMesh.visible !== false) picks.push(backNumberMesh)
-      dragState.raycaster.setFromCamera(dragState.mouse, camera)
-      const hits = dragState.raycaster.intersectObjects(picks, true)
-      if (hits && hits.length) {
-        let obj = hits[0].object
-        while (obj && obj.parent && obj.parent !== scene && obj !== frontNumberMesh && obj !== backNumberMesh) obj = obj.parent
-        dragState.target = (obj === frontNumberMesh || obj === backNumberMesh) ? obj : hits[0].object
-        dragState.side = (dragState.target === frontNumberMesh) ? 'front' : 'back'
-        dragState.isDragging = true
-        // Disable orbit controls during drag
-        if (controls) controls.enabled = false
-        try { el.setPointerCapture(e.pointerId) } catch {}
-        e.preventDefault()
-      } else {
-        // If user clicked on jersey surface, place the visible number there and start drag
-        const activeSide = (frontNumberMesh && frontNumberMesh.visible !== false) ? 'front' : ((backNumberMesh && backNumberMesh.visible !== false) ? 'back' : null)
-        if (!activeSide) return
-        const targetMesh = getBodyMeshForSide(activeSide)
-        if (!targetMesh) return
-        const jerseyHits = dragState.raycaster.intersectObject(targetMesh, true)
-        if (jerseyHits && jerseyHits.length) {
-          const p = jerseyHits[0].point
-          const n = jerseyHits[0].face ? jerseyHits[0].face.normal.clone().transformDirection(targetMesh.matrixWorld).normalize() : new THREE.Vector3(0, 0, activeSide === 'front' ? 1 : -1)
-          const attachPos = p.clone().add(n.clone().multiplyScalar(0.01))
-          const targetPlane = activeSide === 'front' ? frontNumberMesh : backNumberMesh
-          if (!targetPlane) return
-          targetPlane.position.copy(attachPos)
-          const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n)
-          targetPlane.quaternion.copy(quat)
-          const wp = attachPos
-          if (activeSide === 'front') {
-            config.frontNumberWorldPos = { x: wp.x, y: wp.y, z: wp.z }
-          } else {
-            config.backNumberWorldPos = { x: wp.x, y: wp.y, z: wp.z }
-          }
-          // Begin drag from placed position
-          dragState.target = targetPlane
-          dragState.side = activeSide
-          dragState.isDragging = true
-          if (controls) controls.enabled = false
-          try { el.setPointerCapture(e.pointerId) } catch {}
-          e.preventDefault()
-        }
-      }
-    }
-
-    function onPointerMove(e) {
-      if (!dragState.isDragging || !dragState.target) return
-      toNDC(e)
-      const targetMesh = getBodyMeshForSide(dragState.side)
-      if (!targetMesh) return
-      dragState.raycaster.setFromCamera(dragState.mouse, camera)
-      const hits = dragState.raycaster.intersectObject(targetMesh, true)
-      if (hits && hits.length) {
-        const p = hits[0].point
-        const n = hits[0].face ? hits[0].face.normal.clone().transformDirection(targetMesh.matrixWorld).normalize() : new THREE.Vector3(0, 0, dragState.side === 'front' ? 1 : -1)
-        const attachPos = p.clone().add(n.clone().multiplyScalar(0.01))
-        dragState.target.position.copy(attachPos)
-        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n)
-        dragState.target.quaternion.copy(quat)
-        const wp = attachPos
-        if (dragState.side === 'front') {
-          config.frontNumberWorldPos = { x: wp.x, y: wp.y, z: wp.z }
-        } else {
-          config.backNumberWorldPos = { x: wp.x, y: wp.y, z: wp.z }
-        }
-      }
-    }
-
-    function onPointerUp(e) {
-      dragState.isDragging = false
-      dragState.target = null
-      dragState.side = null
-      // Re-enable controls
-      if (controls) {
-        controls.enabled = !dragEnabled
-        if (typeof controls.enableRotate !== 'undefined') controls.enableRotate = !dragEnabled
-        if (typeof controls.enablePan !== 'undefined') controls.enablePan = !dragEnabled
-      }
-      try { el.releasePointerCapture(e.pointerId) } catch {}
-    }
-
-    // Use capture to intercept before OrbitControls listeners
-    el.addEventListener('pointerdown', onPointerDown, { passive: false, capture: true })
-    el.addEventListener('pointermove', onPointerMove, { passive: false, capture: true })
-    el.addEventListener('pointerup', onPointerUp, { passive: false, capture: true })
-    el.addEventListener('pointerleave', onPointerUp, { passive: false, capture: true })
-  }
-  if (clearAllBtn) clearAllBtn.addEventListener("click", () => {
+  clearAllBtn.addEventListener("click", () => {
     // Reset text inputs
     frontNumberInput.value = ""
     backNameInput.value = ""
@@ -1316,12 +1136,18 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     config.logoPlacement = "front"
 
     // Reset positions
+    config.frontNumberPosition = { x: 0, y: 0 }
     config.backNamePosition = { x: 0, y: 0.2 }
+    config.backNumberPosition = { x: 0, y: 0 }
     config.logoPosition = { x: 0, y: 0.35 }
 
     // Reset sliders
+    frontNumberXSlider.value = 0.5
+    frontNumberYSlider.value = 0.5
     backNameXSlider.value = 0.5
     backNameYSlider.value = 0.7
+    backNumberXSlider.value = 0.5
+    backNumberYSlider.value = 0.5
     logoXSlider.value = 0.5
     logoYSlider.value = 0.85
     logoPlacementSelect.value = "front"
@@ -1347,7 +1173,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
     } catch (e) { console.warn('restorePaintedMaterials failed', e) }
   }
 
-  if (downloadDesignBtn) downloadDesignBtn.addEventListener("click", () => {
+  downloadDesignBtn.addEventListener("click", () => {
     downloadMultiViewDesign()
   })
 
@@ -1401,6 +1227,4 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
 
   // Initialize the scene
   initScene()
-  // Enable dragging after scene init
-  enableNumberDrag()
 })
