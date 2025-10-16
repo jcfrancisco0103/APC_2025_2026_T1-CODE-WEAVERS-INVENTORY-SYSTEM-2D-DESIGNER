@@ -1,7 +1,7 @@
 {% extends 'ecom/customer_base.html' %}
 {% load static %}
 {% block content %}
-  <div class="flex flex-col h-screen">
+  <div class="flex flex-col h-screen relative" style="z-index: 1;">
       <!-- Three.js and required libraries -->
       <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -11,13 +11,13 @@
       <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
       <link rel="stylesheet" href="{% static 'css/customizer.css' %}">
 
-      <div class="flex flex-1 overflow-hidden">
+      <div class="flex flex-1 overflow-hidden relative" style="margin-top: 2rem; z-index: 2; transform: translateZ(-10px);">
           <!-- 3D Viewport -->
-          <div class="relative flex-1 bg-gray-900">
+          <div class="relative flex-1 bg-gray-900" style="transform: perspective(1000px) translateZ(-20px);">
               <div id="canvas-container" class="w-full h-full"></div>
               
               <!-- Reset View Button -->
-              <div class="absolute bottom-4 right-4">
+              <div class="absolute bottom-4 right-4" style="z-index: 10;">
                   <button id="reset-view" class="bg-white text-gray-900 px-4 py-2 rounded shadow hover:bg-gray-100">
                       Reset View
                   </button>
@@ -25,7 +25,7 @@
           </div>
 
           <!-- Controls Panel -->
-          <div class="w-96 overflow-y-auto border-l border-gray-200 bg-white">
+          <div class="w-96 overflow-y-auto border-l border-gray-200 bg-white" style="transform: translateZ(-5px); position: relative; z-index: 5;">
               <div class="p-4">
                   <h2 class="text-xl font-bold mb-4">Customize Your Jersey</h2>
                   <div class="space-y-4">
@@ -46,19 +46,62 @@
                       <div>
                           <label class="block mb-2">Body Color</label>
                           <input type="color" id="primary-color" value="#ffffff" class="w-full h-10" title="Select body color">
+                          <!-- Vibrant Color Palette Presets -->
+                          <div class="mt-2">
+                              <label class="block text-xs text-gray-600 mb-1">Quick Color Presets</label>
+                              <div class="grid grid-cols-8 gap-1">
+                                  <button class="color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#FF6B35" style="background-color: #FF6B35;" title="Vibrant Orange"></button>
+                                  <button class="color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#004E89" style="background-color: #004E89;" title="Deep Blue"></button>
+                                  <button class="color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#FF1744" style="background-color: #FF1744;" title="Electric Red"></button>
+                                  <button class="color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#00C853" style="background-color: #00C853;" title="Emerald Green"></button>
+                                  <button class="color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#7C4DFF" style="background-color: #7C4DFF;" title="Royal Purple"></button>
+                                  <button class="color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#FFD600" style="background-color: #FFD600;" title="Golden Yellow"></button>
+                                  <button class="color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#FF5722" style="background-color: #FF5722;" title="Sunset Orange"></button>
+                                  <button class="color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#2E7D32" style="background-color: #2E7D32;" title="Forest Green"></button>
+                              </div>
+                          </div>
                       </div>
                       <div>
                           <label class="block mb-2">Sleeve Color</label>
                           <input type="color" id="secondary-color" value="#ffffff" class="w-full h-10" title="Select sleeve color">
+                          <!-- Vibrant Sleeve Color Palette Presets -->
+                          <div class="mt-2">
+                              <label class="block text-xs text-gray-600 mb-1">Quick Color Presets</label>
+                              <div class="grid grid-cols-8 gap-1">
+                                  <button class="sleeve-color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#1A237E" style="background-color: #1A237E;" title="Navy Blue"></button>
+                                  <button class="sleeve-color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#B71C1C" style="background-color: #B71C1C;" title="Crimson Red"></button>
+                                  <button class="sleeve-color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#1B5E20" style="background-color: #1B5E20;" title="Dark Green"></button>
+                                  <button class="sleeve-color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#4A148C" style="background-color: #4A148C;" title="Deep Purple"></button>
+                                  <button class="sleeve-color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#E65100" style="background-color: #E65100;" title="Burnt Orange"></button>
+                                  <button class="sleeve-color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#F57F17" style="background-color: #F57F17;" title="Amber Gold"></button>
+                                  <button class="sleeve-color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#212121" style="background-color: #212121;" title="Charcoal Black"></button>
+                                  <button class="sleeve-color-preset w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500" data-color="#37474F" style="background-color: #37474F;" title="Steel Gray"></button>
+                              </div>
+                          </div>
                       </div>
                       <div>
                           <label class="block mb-2">Pattern</label>
-                          <select id="pattern" class="w-full p-2 border rounded" title="Select pattern">
+                          <select id="pattern" class="w-full p-2 border rounded">
                               <option value="none">None</option>
-                              {% for pattern in patterns %}
-                                  <option value="{{ pattern }}">{{ pattern|title }}</option>
-                              {% endfor %}
+                              <option value="stripes">Stripes</option>
+                              <option value="dots">Dots</option>
+                              <option value="geometric">Geometric</option>
+                              <option value="gradient">Gradient</option>
                           </select>
+                      </div>
+                      <!-- Professional Color Scheme Presets -->
+                      <div class="mt-4 p-3 bg-gray-50 rounded-lg">
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Professional Color Schemes</label>
+                          <div class="grid grid-cols-2 gap-2">
+                              <button class="scheme-preset px-3 py-2 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50" data-scheme="classic">Classic Navy</button>
+                              <button class="scheme-preset px-3 py-2 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50" data-scheme="vibrant">Vibrant Red</button>
+                              <button class="scheme-preset px-3 py-2 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50" data-scheme="modern">Modern Gray</button>
+                              <button class="scheme-preset px-3 py-2 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50" data-scheme="elegant">Elegant Purple</button>
+                              <button class="scheme-preset px-3 py-2 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50" data-scheme="bold">Bold Orange</button>
+                              <button class="scheme-preset px-3 py-2 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50" data-scheme="sporty">Sporty Green</button>
+                              <button class="scheme-preset px-3 py-2 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50" data-scheme="premium">Premium Crimson</button>
+                              <button class="scheme-preset px-3 py-2 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50" data-scheme="dynamic">Dynamic Purple</button>
+                          </div>
                       </div>
                       
                       <!-- AI Features Section -->
@@ -175,11 +218,11 @@
                               <div class="grid grid-cols-3 gap-2">
                                   <div>
                                       <label class="text-xs">X Position</label>
-                                      <input type="range" id="back-number-x" min="0" max="1" step="0.01" value="0.5" class="w-full" title="Adjust back number X position">
+                                      <input type="range" id="back-number-x" min="0" max="1" step="0.01" value="0.7" class="w-full" title="Adjust back number X position">
                                   </div>
                                   <div>
                                       <label class="text-xs">Y Position</label>
-                                      <input type="range" id="back-number-y" min="0" max="1" step="0.01" value="0.5" class="w-full" title="Adjust back number Y position">
+                                      <input type="range" id="back-number-y" min="0" max="1" step="0.01" value="0.2" class="w-full" title="Adjust back number Y position">
                                   </div>
                                   <div>
                                       <label class="text-xs">Z Position (Depth)</label>

@@ -2217,7 +2217,11 @@ def create(request):
     return render(request, 'ecom/create.html')
 
 def jersey_customizer_advanced_view(request):
-    return render(request, 'ecom/jersey_customizer_advanced.html')
+    patterns = ['stripes', 'dots', 'geometric', 'gradient']
+    context = {
+        'patterns': patterns
+    }
+    return render(request, 'ecom/jersey_customizer_advanced.html', context)
 
 def jersey_customizer_3d_view(request):
     return render(request, 'ecom/jersey_customizer_3d.html')

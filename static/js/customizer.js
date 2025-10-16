@@ -100,22 +100,53 @@ const logoZSlider = document.getElementById("logo-z")
     camera = new THREE.PerspectiveCamera(50, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000)
     camera.position.z = 2
 
-    // Create renderer
-renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+    // Create renderer with enhanced visual quality
+    renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      preserveDrawingBuffer: true,
+      alpha: true,
+      powerPreference: "high-performance"
+    })
     renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight)
-    renderer.setPixelRatio(window.devicePixelRatio)
-// ensure correct color space handling
-try { renderer.outputEncoding = THREE.sRGBEncoding } catch (e) {}
-try { renderer.toneMappingExposure = 1.0 } catch (e) {}
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    // Enhanced color space and tone mapping for realistic visuals
+    try { 
+      renderer.outputEncoding = THREE.sRGBEncoding 
+      renderer.toneMapping = THREE.ACESFilmicToneMapping
+      renderer.toneMappingExposure = 1.2
+      renderer.shadowMap.enabled = true
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap
+      renderer.physicallyCorrectLights = true
+    } catch (e) {}
     canvasContainer.appendChild(renderer.domElement)
 
-    // Add lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+    // Enhanced lighting setup for realistic visuals
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6)
     scene.add(ambientLight)
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
-    directionalLight.position.set(1, 1, 1)
+    // Primary directional light with shadows
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2)
+    directionalLight.position.set(5, 10, 5)
+    directionalLight.castShadow = true
+    directionalLight.shadow.mapSize.width = 2048
+    directionalLight.shadow.mapSize.height = 2048
+    directionalLight.shadow.camera.near = 0.5
+    directionalLight.shadow.camera.far = 50
+    directionalLight.shadow.camera.left = -10
+    directionalLight.shadow.camera.right = 10
+    directionalLight.shadow.camera.top = 10
+    directionalLight.shadow.camera.bottom = -10
     scene.add(directionalLight)
+    
+    // Secondary fill light for better illumination
+    const fillLight = new THREE.DirectionalLight(0x87CEEB, 0.4)
+    fillLight.position.set(-5, 5, -5)
+    scene.add(fillLight)
+    
+    // Rim light for enhanced depth
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.3)
+    rimLight.position.set(0, -5, -10)
+    scene.add(rimLight)
 
     // Add grid helper
     gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x444444)
@@ -168,7 +199,7 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
       jersey = gltf.scene
 
       // Position the jersey in the center of the viewport
-      jersey.position.set(0, -1.4, 0.5)
+      jersey.position.set(0, -1.4, 0.3)
 
       scene.add(jersey)
 
@@ -264,6 +295,8 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
       // Position relative to jersey with increased z-offset to prevent bleeding
       frontNumberMesh.position.set(config.frontNumberPosition.x, config.frontNumberPosition.y, config.frontNumberPosition.z)
       frontNumberMesh.rotation.y = Math.PI // Ensure it faces forward
+      // Ensure proper alignment for selection outline
+      frontNumberMesh.userData.isTextElement = true
     }
 
     // Create back name
@@ -294,6 +327,8 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
       jersey.add(backNameMesh)
       // Position relative to jersey with increased z-offset to prevent bleeding
       backNameMesh.position.set(config.backNamePosition.x, config.backNamePosition.y, config.backNamePosition.z)
+      // Ensure proper alignment for selection outline
+      backNameMesh.userData.isTextElement = true
     }
 
     // Create back number
@@ -324,6 +359,8 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
       jersey.add(backNumberMesh)
       // Position relative to jersey with increased z-offset to prevent bleeding
       backNumberMesh.position.set(config.backNumberPosition.x, config.backNumberPosition.y, config.backNumberPosition.z)
+      // Ensure proper alignment for selection outline
+      backNumberMesh.userData.isTextElement = true
     }
 
     // Create logo if available using a decal projection onto the mesh surface
@@ -1031,8 +1068,254 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
 
   patternSelect.addEventListener("change", function () {
     config.pattern = this.value
-    // Apply pattern to jersey (implementation depends on available patterns)
+    applyPattern(this.value)
   })
+
+  // Apply pattern function
+  function applyPattern(pattern) {
+    if (!jersey) return
+    
+    // Remove existing pattern materials and restore original colors
+    bodyMeshes.forEach(mesh => {
+      if (mesh.userData.originalMaterial) {
+        mesh.material = mesh.userData.originalMaterial.clone()
+        delete mesh.userData.originalMaterial
+      }
+    })
+    sleeveMeshes.forEach(mesh => {
+      if (mesh.userData.originalMaterial) {
+        mesh.material = mesh.userData.originalMaterial.clone()
+        delete mesh.userData.originalMaterial
+      }
+    })
+    
+    // Apply new pattern based on selection
+    switch(pattern) {
+      case 'stripes':
+        applyStripesPattern()
+        break
+      case 'dots':
+        applyDotsPattern()
+        break
+      case 'geometric':
+        applyGeometricPattern()
+        break
+      case 'gradient':
+        applyGradientPattern()
+        break
+      case 'none':
+      default:
+        // Keep original colors without pattern
+        applyBodyColor()
+        applySleeveColor()
+        break
+    }
+  }
+
+  // Pattern application functions
+  function applyStripesPattern() {
+    // Create striped texture
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 256
+    const ctx = canvas.getContext('2d')
+    
+    // Draw stripes
+    ctx.fillStyle = config.primaryColor
+    ctx.fillRect(0, 0, 256, 256)
+    ctx.fillStyle = config.secondaryColor
+    for (let i = 0; i < 256; i += 32) {
+      ctx.fillRect(0, i, 256, 16)
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(2, 2)
+    
+    applyPatternTexture(texture)
+  }
+
+  function applyDotsPattern() {
+    // Create dotted texture
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 256
+    const ctx = canvas.getContext('2d')
+    
+    // Draw dots
+    ctx.fillStyle = config.primaryColor
+    ctx.fillRect(0, 0, 256, 256)
+    ctx.fillStyle = config.secondaryColor
+    for (let x = 16; x < 256; x += 32) {
+      for (let y = 16; y < 256; y += 32) {
+        ctx.beginPath()
+        ctx.arc(x, y, 8, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(3, 3)
+    
+    applyPatternTexture(texture)
+  }
+
+  function applyGeometricPattern() {
+    // Create geometric texture
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 256
+    const ctx = canvas.getContext('2d')
+    
+    // Draw geometric pattern
+    ctx.fillStyle = config.primaryColor
+    ctx.fillRect(0, 0, 256, 256)
+    ctx.fillStyle = config.secondaryColor
+    for (let x = 0; x < 256; x += 64) {
+      for (let y = 0; y < 256; y += 64) {
+        ctx.fillRect(x + 16, y + 16, 32, 32)
+      }
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(2, 2)
+    
+    applyPatternTexture(texture)
+  }
+
+  function applyGradientPattern() {
+    // Create high-resolution gradient texture for better quality
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')
+    
+    // Enhanced gradient with multiple options
+    const gradientType = config.gradientType || 'linear' // linear, radial, diagonal
+    const gradientDirection = config.gradientDirection || 'horizontal' // horizontal, vertical, diagonal
+    
+    let gradient
+    
+    switch(gradientType) {
+      case 'radial':
+        // Radial gradient from center
+        gradient = ctx.createRadialGradient(256, 256, 0, 256, 256, 256)
+        break
+      case 'diagonal':
+        // Diagonal gradient
+        gradient = ctx.createLinearGradient(0, 0, 512, 512)
+        break
+      case 'linear':
+      default:
+        // Linear gradient based on direction
+        switch(gradientDirection) {
+          case 'vertical':
+            gradient = ctx.createLinearGradient(0, 0, 0, 512)
+            break
+          case 'diagonal':
+            gradient = ctx.createLinearGradient(0, 0, 512, 512)
+            break
+          case 'horizontal':
+          default:
+            gradient = ctx.createLinearGradient(0, 0, 512, 0)
+            break
+        }
+        break
+    }
+    
+    // Enhanced color stops for smoother transitions
+    gradient.addColorStop(0, config.primaryColor)
+    gradient.addColorStop(0.25, blendColors(config.primaryColor, config.secondaryColor, 0.25))
+    gradient.addColorStop(0.5, blendColors(config.primaryColor, config.secondaryColor, 0.5))
+    gradient.addColorStop(0.75, blendColors(config.primaryColor, config.secondaryColor, 0.75))
+    gradient.addColorStop(1, config.secondaryColor)
+    
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, 512, 512)
+    
+    // Create texture with enhanced properties
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(1, 1)
+    texture.minFilter = THREE.LinearFilter
+    texture.magFilter = THREE.LinearFilter
+    texture.generateMipmaps = true
+    texture.needsUpdate = true
+    
+    applyPatternTexture(texture)
+  }
+  
+  // Helper function to blend colors for smoother gradients
+  function blendColors(color1, color2, ratio) {
+    // Convert hex colors to RGB
+    const hex1 = color1.replace('#', '')
+    const hex2 = color2.replace('#', '')
+    
+    const r1 = parseInt(hex1.substr(0, 2), 16)
+    const g1 = parseInt(hex1.substr(2, 2), 16)
+    const b1 = parseInt(hex1.substr(4, 2), 16)
+    
+    const r2 = parseInt(hex2.substr(0, 2), 16)
+    const g2 = parseInt(hex2.substr(2, 2), 16)
+    const b2 = parseInt(hex2.substr(4, 2), 16)
+    
+    // Blend the colors
+    const r = Math.round(r1 + (r2 - r1) * ratio)
+    const g = Math.round(g1 + (g2 - g1) * ratio)
+    const b = Math.round(b1 + (b2 - b1) * ratio)
+    
+    // Convert back to hex
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  }
+
+  function applyPatternTexture(texture) {
+    // Apply pattern to body meshes
+    bodyMeshes.forEach(mesh => {
+      // Store original material if not already stored
+      if (!mesh.userData.originalMaterial) {
+        mesh.userData.originalMaterial = mesh.material.clone()
+      }
+      
+      // Create new material with pattern texture
+      const material = new THREE.MeshStandardMaterial({
+        map: texture,
+        roughness: 0.8,
+        metalness: 0.1,
+        envMapIntensity: 0.5,
+        normalScale: new THREE.Vector2(0.5, 0.5)
+      })
+      
+      mesh.material = material
+    })
+    
+    // Apply pattern to sleeve meshes if visible
+    if (config.jerseyType !== "sleeveless") {
+      sleeveMeshes.forEach(mesh => {
+        // Store original material if not already stored
+        if (!mesh.userData.originalMaterial) {
+          mesh.userData.originalMaterial = mesh.material.clone()
+        }
+        
+        // Create new material with pattern texture
+        const material = new THREE.MeshStandardMaterial({
+          map: texture,
+          roughness: 0.8,
+          metalness: 0.1,
+          envMapIntensity: 0.5,
+          normalScale: new THREE.Vector2(0.5, 0.5),
+          side: THREE.DoubleSide
+        })
+        
+        mesh.material = material
+      })
+    }
+  }
 
   frontNumberInput.addEventListener("input", function () {
     config.frontNumber = this.value
@@ -1280,7 +1563,14 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
         } else {
           // preserve any existing map if present
           const existingMap = (mesh.material && mesh.material.map) ? mesh.material.map : null
-          const mat = new THREE.MeshStandardMaterial({ color: config.primaryColor })
+          // Enhanced material with realistic properties
+          const mat = new THREE.MeshStandardMaterial({ 
+            color: config.primaryColor,
+            roughness: 0.7,
+            metalness: 0.1,
+            envMapIntensity: 0.5,
+            normalScale: new THREE.Vector2(0.5, 0.5)
+          })
           if (existingMap) mat.map = existingMap
           mesh.material = mat
         }
@@ -1303,7 +1593,15 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
         if (config.jerseyType !== "sleeveless") {
           // Always assign a fresh material so sleeves do not share body material
           const existingMap = (mesh.material && mesh.material.map) ? mesh.material.map : null
-          const newMat = new THREE.MeshStandardMaterial({ color: config.secondaryColor, side: THREE.DoubleSide })
+          // Enhanced sleeve material with realistic properties
+          const newMat = new THREE.MeshStandardMaterial({ 
+            color: config.secondaryColor, 
+            side: THREE.DoubleSide,
+            roughness: 0.7,
+            metalness: 0.1,
+            envMapIntensity: 0.5,
+            normalScale: new THREE.Vector2(0.5, 0.5)
+          })
           if (existingMap) newMat.map = existingMap
           mesh.material = newMat
         }
@@ -1571,14 +1869,18 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
         color: 0x00ff00,
         side: THREE.BackSide,
         transparent: true,
-        opacity: 0.3
+        opacity: 0.4, // Increased opacity for better visibility
+        depthTest: false, // Ensure outline is always visible
+        depthWrite: false
       })
       
       // Create outline mesh
       const outlineGeometry = selectedElement.geometry.clone()
       const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial)
       outlineMesh.position.copy(selectedElement.position)
-      outlineMesh.scale.multiplyScalar(1.1)
+      // Ensure outline is perfectly aligned with the numerical element
+      outlineMesh.rotation.copy(selectedElement.rotation)
+      outlineMesh.scale.multiplyScalar(1.05) // Reduced scale for tighter alignment
       outlineMesh.name = 'selection-outline'
       
       scene.add(outlineMesh)
@@ -1615,6 +1917,70 @@ try { renderer.toneMappingExposure = 1.0 } catch (e) {}
       config.logoPosition.z = selectedElement.position.z
     }
   }
+
+  // Color preset functionality for enhanced visual appeal
+  function initializeColorPresets() {
+    // Body color presets
+    const colorPresets = document.querySelectorAll('.color-preset')
+    colorPresets.forEach(preset => {
+      preset.addEventListener('click', function() {
+        const color = this.getAttribute('data-color')
+        primaryColorInput.value = color
+        config.primaryColor = color
+        applyBodyColor()
+      })
+    })
+
+    // Sleeve color presets
+    const sleeveColorPresets = document.querySelectorAll('.sleeve-color-preset')
+    sleeveColorPresets.forEach(preset => {
+      preset.addEventListener('click', function() {
+        const color = this.getAttribute('data-color')
+        secondaryColorInput.value = color
+        config.secondaryColor = color
+        applySleeveColor()
+      })
+    })
+  }
+
+  // Professional color scheme combinations
+  function applyProfessionalColorScheme(scheme) {
+    const professionalSchemes = {
+      'classic': { primary: '#1A237E', secondary: '#FFFFFF' }, // Navy & White
+      'vibrant': { primary: '#FF1744', secondary: '#FFD600' }, // Red & Gold
+      'modern': { primary: '#37474F', secondary: '#00C853' }, // Gray & Green
+      'elegant': { primary: '#4A148C', secondary: '#E1BEE7' }, // Purple & Light Purple
+      'bold': { primary: '#FF6B35', secondary: '#004E89' }, // Orange & Blue
+      'sporty': { primary: '#00C853', secondary: '#212121' }, // Green & Black
+      'premium': { primary: '#B71C1C', secondary: '#F57F17' }, // Crimson & Gold
+      'dynamic': { primary: '#7C4DFF', secondary: '#FF5722' }  // Purple & Orange
+    }
+
+    if (professionalSchemes[scheme]) {
+      const colors = professionalSchemes[scheme]
+      primaryColorInput.value = colors.primary
+      secondaryColorInput.value = colors.secondary
+      config.primaryColor = colors.primary
+      config.secondaryColor = colors.secondary
+      applyBodyColor()
+      applySleeveColor()
+    }
+  }
+
+  // Initialize professional color scheme presets
+  function initializeProfessionalSchemes() {
+    const schemePresets = document.querySelectorAll('.scheme-preset')
+    schemePresets.forEach(preset => {
+      preset.addEventListener('click', function() {
+        const scheme = this.getAttribute('data-scheme')
+        applyProfessionalColorScheme(scheme)
+      })
+    })
+  }
+
+  // Initialize color presets and professional schemes
+  initializeColorPresets()
+  initializeProfessionalSchemes()
 })
 
 // Selection mode variables
