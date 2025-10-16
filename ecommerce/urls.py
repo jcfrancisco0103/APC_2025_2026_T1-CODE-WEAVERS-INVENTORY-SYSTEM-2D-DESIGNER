@@ -36,6 +36,7 @@ urlpatterns = [
     path('adminclick', views.adminclick_view),
     path('adminlogin', LoginView.as_view(template_name='ecom/adminlogin.html'),name='adminlogin'),
     path('admin-dashboard', views.admin_dashboard_view,name='admin-dashboard'),
+    path('verify-admin-status/',views.verify_admin_status,name='verify-admin-status'),
 
     path('view-customer', views.admin_view_users,name='view-customer'),
 

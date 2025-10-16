@@ -19,19 +19,59 @@ from .models import Product
 from .models import InventoryItem
 from .models import Orders
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from django.views.decorators.http import require_http_methods, require_GET
 import requests
 import json
 import base64
 from django.core.files.base import ContentFile
 from django.http import HttpResponse
 from django.http import JsonResponse
-from django.shortcuts import redirect
-from django.views.decorators.http import require_GET
+
+# Admin status verification endpoint for client-side security
+@require_http_methods(["GET"])
+def verify_admin_status(request):
+    """
+    AJAX endpoint to verify if current user has admin privileges
+    Used by client-side security validation
+    """
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        is_admin_user = is_admin(request.user)
+        return JsonResponse({
+            'is_admin': is_admin_user,
+            'is_authenticated': request.user.is_authenticated
+        })
+    else:
+        # Non-AJAX requests get redirected
+        return redirect('adminlogin')
+
 from django.core.serializers.json import DjangoJSONEncoder
 from datetime import datetime
 from decimal import Decimal
 
-@login_required(login_url='adminlogin')
+# Helper function to check if user is admin
+def is_admin(user):
+    """
+    Check if the user has admin privileges
+    """
+    return user.is_authenticated and user.is_staff
+
+# Admin required decorator
+def admin_required(view_func):
+    """
+    Decorator that ensures only authenticated admin users can access a view.
+    If user is not admin, logs them out and redirects to admin login.
+    """
+    def wrapper(request, *args, **kwargs):
+        if not is_admin(request.user):
+            # Log out the user if they're not an admin
+            from django.contrib.auth import logout
+            logout(request)
+            messages.error(request, 'Access denied. Admin privileges required.')
+            return redirect('adminlogin')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+@admin_required
 def user_profile_page(request, user_id):
     import logging
     logger = logging.getLogger(__name__)
@@ -73,7 +113,7 @@ def user_profile_page(request, user_id):
         return render(request, 'ecom/user_profile_page.html', context)
 
 
-@login_required(login_url='adminlogin')
+@admin_required
 def get_transactions_by_month(request):
     month = request.GET.get('month')
     year = request.GET.get('year')
@@ -229,7 +269,7 @@ def home_view(request):
     
     return render(request, 'ecom/index.html', context)
 
-@login_required(login_url='adminlogin')
+@admin_required
 def manage_inventory(request):
     inventory_items = InventoryItem.objects.all()
     if request.method == "POST":
@@ -257,7 +297,7 @@ def update_stock(request, item_id):
 
 
 
-@login_required(login_url='adminlogin')
+@admin_required
 def adminclick_view(request):
     if request.user.is_authenticated:
         return HttpResponseRedirect('afterlogin')
@@ -330,6 +370,39 @@ def customer_login(request):
 def is_customer(user):
     return user.groups.filter(name='CUSTOMER').exists()
 
+#-----------for checking user is admin
+def is_admin(user):
+    """
+    Check if user is an admin (staff member)
+    """
+    return user.is_authenticated and user.is_staff
+
+#-----------admin required decorator with security
+from functools import wraps
+from django.contrib.auth import logout
+from django.contrib import messages
+
+def admin_required(view_func):
+    """
+    Decorator that ensures only admin users can access the view.
+    Non-admin users are logged out and redirected to admin login with error message.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        # Check if user is authenticated and is admin
+        if not request.user.is_authenticated:
+            messages.error(request, 'Access denied. Please log in as an administrator.')
+            return redirect('adminlogin')
+        
+        if not is_admin(request.user):
+            # Log out the non-admin user for security
+            logout(request)
+            messages.error(request, 'Access denied. You do not have administrator privileges. You have been logged out for security reasons.')
+            return redirect('adminlogin')
+        
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
 @login_required
 @user_passes_test(is_customer)
 def add_custom_jersey_to_cart(request):
@@ -383,7 +456,7 @@ def afterlogin_view(request):
 #---------------------------------------------------------------------------------
 #------------------------ ADMIN RELATED VIEWS START ------------------------------
 #---------------------------------------------------------------------------------
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_dashboard_view(request):
     # for cards on dashboard
     customercount = models.Customer.objects.all().count()
@@ -508,7 +581,7 @@ def admin_dashboard_view(request):
 
 
 # admin view customer table
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_view_users(request):
     import csv
     from django.http import HttpResponse
@@ -567,7 +640,7 @@ def admin_view_users(request):
     }
     return render(request, 'ecom/admin_view_users.html', context)
 
-@login_required(login_url='adminlogin')
+@admin_required
 def bulk_update_users(request):
     if request.method == 'POST':
         user_ids = request.POST.getlist('user_ids')
@@ -583,7 +656,7 @@ def bulk_update_users(request):
     return redirect('view-customer')
 
 # admin delete customer
-@login_required(login_url='adminlogin')
+@admin_required
 def delete_customer_view(request,pk):
     customer=models.Customer.objects.get(id=pk)
     user=models.User.objects.get(id=customer.user_id)
@@ -592,7 +665,7 @@ def delete_customer_view(request,pk):
     return redirect('view-customer')
 
 
-@login_required(login_url='adminlogin')
+@admin_required
 def update_customer_view(request,pk):
     customer=models.Customer.objects.get(id=pk)
     user=models.User.objects.get(id=customer.user_id)
@@ -611,7 +684,7 @@ def update_customer_view(request,pk):
     return render(request,'ecom/admin_update_customer.html',context=mydict)
 
 # admin view the product
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_products_view(request):
     # Get all products and order them by id descending (newest first)
     products = models.Product.objects.all().order_by('-id')
@@ -619,7 +692,7 @@ def admin_products_view(request):
 
 
 # admin add product by clicking on floating button
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_add_product_view(request):
     productForm=forms.ProductForm()
     if request.method=='POST':
@@ -660,7 +733,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-@login_required(login_url='adminlogin')
+@admin_required
 @require_POST
 @csrf_protect
 def delete_product_view(request, pk):
@@ -685,7 +758,7 @@ def delete_product_view(request, pk):
             return redirect('admin-products')
 
 
-@login_required(login_url='adminlogin')
+@admin_required
 def update_product_view(request, pk):
     product = models.Product.objects.get(id=pk)
     if request.method == 'POST':
@@ -719,7 +792,7 @@ def update_product_view(request, pk):
     return render(request, 'ecom/admin_update_product.html', {'productForm': productForm})
 
 
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_view_booking_view(request):
     return redirect('admin-view-processing-orders')
 
@@ -733,7 +806,7 @@ def get_order_status_counts():
     }
     return counts
 
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_view_processing_orders(request):
     orders = models.Orders.objects.filter(status__in=['Pending', 'Processing'])
     counts = get_order_status_counts()
@@ -746,7 +819,7 @@ def admin_view_processing_orders(request):
     }
     return prepare_admin_order_view(request, orders, 'Processing', 'ecom/admin_view_orders.html', extra_context=context)
 
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_view_confirmed_orders(request):
     orders = models.Orders.objects.filter(status='Order Confirmed')
     counts = get_order_status_counts()
@@ -759,7 +832,7 @@ def admin_view_confirmed_orders(request):
     }
     return prepare_admin_order_view(request, orders, 'Order Confirmed', 'ecom/admin_view_orders.html', extra_context=context)
 
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_view_shipping_orders(request):
     orders = models.Orders.objects.filter(status='Out for Delivery')
     counts = get_order_status_counts()
@@ -772,7 +845,7 @@ def admin_view_shipping_orders(request):
     }
     return prepare_admin_order_view(request, orders, 'Out for Delivery', 'ecom/admin_view_orders.html', extra_context=context)
 
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_view_delivered_orders(request):
     orders = models.Orders.objects.filter(status='Delivered')
     counts = get_order_status_counts()
@@ -785,7 +858,7 @@ def admin_view_delivered_orders(request):
     }
     return prepare_admin_order_view(request, orders, 'Delivered', 'ecom/admin_view_orders.html', extra_context=context)
 
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_view_cancelled_orders(request):
     orders = models.Orders.objects.filter(status='Cancelled').prefetch_related('orderitem_set').order_by('-created_at')
     counts = get_order_status_counts()
@@ -842,7 +915,7 @@ def prepare_admin_order_view(request, orders, status, template, extra_context=No
     
     return render(request, template, context)
 
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_view_cancelled_orders(request):
     orders = models.Orders.objects.filter(status='Cancelled').prefetch_related('orderitem_set').order_by('-created_at')
     # Prepare orders_data with order_id fallback and total price calculation
@@ -880,14 +953,14 @@ def admin_view_cancelled_orders(request):
     return render(request, 'ecom/admin_view_orders.html', context)
 
 
-@login_required(login_url='adminlogin')
+@admin_required
 def delete_order_view(request,pk):
     order=models.Orders.objects.get(id=pk)
     order.delete()
     return redirect('admin-view-booking')
 
 # for changing status of order (pending,delivered...)
-@login_required(login_url='adminlogin')
+@admin_required
 def update_order_view(request,pk):
     order = models.Orders.objects.get(id=pk)
     orderForm = forms.OrderForm(instance=order)
@@ -939,13 +1012,13 @@ def update_order_view(request,pk):
     return render(request, 'ecom/update_order.html', context)
 
 
-@login_required(login_url='adminlogin')
+@admin_required
 def delete_inventory(request, item_id):
     item = get_object_or_404(InventoryItem, id=item_id)
     item.delete()
     return redirect('manage-inventory')
 
-@login_required(login_url='adminlogin')
+@admin_required
 def bulk_update_orders(request):
     if request.method == 'POST':
         order_ids = request.POST.getlist('order_ids')
@@ -1012,7 +1085,7 @@ def bulk_update_orders(request):
             
     return redirect('admin-view-booking')
 
-@login_required(login_url='adminlogin')
+@admin_required
 def edit_inventory(request, item_id):
     item = get_object_or_404(InventoryItem, id=item_id)
     
@@ -1028,7 +1101,7 @@ def edit_inventory(request, item_id):
 
 
 # admin view the feedback
-@login_required(login_url='adminlogin')
+@admin_required
 def view_feedback_view(request):
     feedbacks=models.Feedback.objects.all().order_by('-id')
     return render(request,'ecom/view_feedback.html',{'feedbacks':feedbacks})
@@ -2250,7 +2323,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 import datetime
 
 @require_GET
-@login_required(login_url='adminlogin')
+@admin_required
 def get_transactions_by_month(request):
     month = request.GET.get('month')
     year = request.GET.get('year')
@@ -2336,7 +2409,7 @@ def update_address(request):
     return redirect('cart')
 
 
-@login_required(login_url='adminlogin')
+@admin_required
 def admin_manage_inventory_view(request):
     if request.method == "POST":
         form = InventoryForm(request.POST)
@@ -2560,7 +2633,7 @@ from datetime import timedelta
 from django.utils import timezone
 from .models import DeliveryMagicLink, DeliveryStatusLog, BulkOrderOperation
 
-@login_required(login_url='adminlogin')
+@admin_required
 def quick_progress_order(request, order_id):
     """Quick one-click order status progression"""
     try:
@@ -2610,7 +2683,7 @@ def quick_progress_order(request, order_id):
             'message': f'Error updating order: {str(e)}'
         })
 
-@login_required(login_url='adminlogin')
+@admin_required
 def bulk_progress_orders(request):
     """Bulk progress multiple orders to next status"""
     if request.method == 'POST':
@@ -2690,7 +2763,7 @@ def bulk_progress_orders(request):
     
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
 
-@login_required(login_url='adminlogin')
+@admin_required
 def generate_magic_link(request, order_id):
     """Generate a magic link for external delivery status updates"""
     try:
