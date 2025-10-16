@@ -7,6 +7,8 @@
     <title>WorksTeamWear | About Us</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.10.2/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+
     <style>
         .fade-mask {
             -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0), rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0));
@@ -22,30 +24,135 @@
             opacity: 1;
             transform: translateY(0);
         }
+
+        /* Footer styling from the first code */
+        footer {
+          padding: 0;
+          background-color: black;
+          margin: 0;
+        }
+
+        .fa {
+          font-size: 23px;
+          width: 2em;
+          height: 2em;
+          text-align: center;
+          text-decoration: none;
+          margin: 5px 2px;
+          border-radius: 50%;
+          padding-top: 0.5em;
+        }
+
+        .fa:hover {
+          opacity: 0.5;
+          text-decoration: none;
+        }
+
+        .fa-facebook {
+          background: #3B5998;
+          color: white;
+          margin-top: 30px;
+        }
+
+        .fa-instagram {
+          background: #125688;
+          color: white;
+        }
+
+        footer p {
+          text-align: center;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
   
   <!-- Navigation -->
-    <nav class="bg-gray-900">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-center justify-between h-16">
-                <div class="text-white text-xl font-bold">WorksTeamWear</div>
-                <div class="flex space-x-4">
-                    <a href="{% url 'customer-home' %}" class="text-white px-3 py-2">Home</a>
-                    <a href="/jersey-customizer/advanced/" class="text-gray-300 hover:text-white px-3 py-2">2d Designer</a>
-                    <a href="{% url 'about' %}" class="text-gray-300 hover:text-white px-3 py-2">About Us</a>
-                </div>
-            </div>
-        </div>
-    </nav>
 
-    
-    <!-- Image Slider -->
-    <div class="relative max-w-5xl mx-auto mt-1 overflow-hidden" 
-     x-data="{ currentIndex: 0, images: ['{% static 'images/company3.jpg' %}', '{% static 'images/g1.png' %}', '{% static 'images/g2.png' %}', '{% static 'images/g3.png' %}', '{% static 'images/g4.png' %}', '{% static 'images/g6.png' %}', '{% static 'images/company2.jpg' %}', '{% static 'images/company1.jpg' %}'], interval: null }"
-     x-init="interval = setInterval(() => { currentIndex = (currentIndex + 1) % images.length }, 5000)">
-    
+<nav class="bg-gray-900">
+  <div class="max-w-7xl mx-auto px-4">
+    <div class="flex items-center justify-between h-16">
+      
+      <!-- Logo -->
+      <div class="text-white text-xl font-bold">WorksTeamWear</div>
+
+      <!-- Nav Links -->
+      <div class="flex space-x-4 items-center">
+
+        <a href="{% url 'customer-home' %}" class="text-gray-300 hover:text-white px-3 py-2">Home</a>
+
+        <!-- Track Orders Dropdown -->
+        <div x-data="{ open: false }" class="relative">
+          <button @click="open = !open" class="text-gray-300 hover:text-white px-3 py-2 flex items-center">
+            Track Orders
+            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" stroke-width="2"
+                 viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          <!-- Dropdown Menu -->
+          <div x-show="open" @click.away="open = false"
+               class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg z-50 py-2">
+            
+            <a href="{% url 'pending-orders' %}" class="flex justify-between items-center px-4 py-2 text-gray-700 hover:bg-gray-100">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2 text-yellow-600"></i>
+                <span>Pending Orders</span>
+              </div>
+              {% if pending_count %}<span class="bg-yellow-100 text-yellow-700 text-xs font-semibold px-2 py-1 rounded-full">{{ pending_count }}</span>{% endif %}
+            </a>
+
+            <a href="{% url 'to-ship-orders' %}" class="flex justify-between items-center px-4 py-2 text-gray-700 hover:bg-gray-100">
+              <div class="flex items-center">
+                <i class="fa fa-ship mr-2 text-blue-600"></i>
+                <span>To Ship</span>
+              </div>
+              {% if to_ship_count %}<span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">{{ to_ship_count }}</span>{% endif %}
+            </a>
+
+            <a href="{% url 'to-receive-orders' %}" class="flex justify-between items-center px-4 py-2 text-gray-700 hover:bg-gray-100">
+              <div class="flex items-center">
+                <i class="fa fa-truck mr-2 text-indigo-600"></i>
+                <span>To Receive</span>
+              </div>
+              {% if to_receive_count %}<span class="bg-indigo-100 text-indigo-700 text-xs font-semibold px-2 py-1 rounded-full">{{ to_receive_count }}</span>{% endif %}
+            </a>
+
+            <a href="{% url 'delivered-orders' %}" class="flex justify-between items-center px-4 py-2 text-gray-700 hover:bg-gray-100">
+              <div class="flex items-center">
+                <i class="fa fa-check-circle mr-2 text-green-600"></i>
+                <span>Delivered</span>
+              </div>
+              {% if delivered_count %}<span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full">{{ delivered_count }}</span>{% endif %}
+            </a>
+
+            <a href="{% url 'cancelled-orders' %}" class="flex justify-between items-center px-4 py-2 text-gray-700 hover:bg-gray-100">
+              <div class="flex items-center">
+                <i class="fa fa-times-circle mr-2 text-red-600"></i>
+                <span>Cancelled</span>
+              </div>
+              {% if cancelled_count %}<span class="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded-full">{{ cancelled_count }}</span>{% endif %}
+            </a>
+          </div>
+        </div>
+        <!-- End Track Orders Dropdown -->
+
+        <a href="/wishlist" class="text-gray-300 hover:text-white px-3 py-2">Wishlist</a>
+        <a href="/jersey-customizer/advanced/" class="text-gray-300 hover:text-white px-3 py-2">3D Designer</a>
+        <a href="{% url 'about' %}" class="text-gray-300 hover:text-white px-3 py-2">About Us</a>
+        <a href="/my-profile" class="text-gray-300 hover:text-white px-3 py-2">Profile</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+
+
+  <!-- Image Slider -->
+  <div class="relative max-w-5xl mx-auto mt-1 overflow-hidden" 
+   x-data="{ currentIndex: 0, images: ['{% static 'images/company3.jpg' %}', '{% static 'images/g1.png' %}', '{% static 'images/g2.png' %}', '{% static 'images/g3.png' %}', '{% static 'images/g4.png' %}', '{% static 'images/g6.png' %}', '{% static 'images/company2.jpg' %}', '{% static 'images/company1.jpg' %}'], interval: null }"
+   x-init="interval = setInterval(() => { currentIndex = (currentIndex + 1) % images.length }, 5000)">
+  
     <div class="relative flex items-center">
         <!-- Previous Button -->
         <button @click="currentIndex = (currentIndex > 0) ? currentIndex - 1 : images.length - 1" 
@@ -81,96 +188,81 @@
             </div>
         </template>
     </div>
-</div>
-   <!-- About Section -->
-    <div class="py-12 bg-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="lg:text-center">
-                <h2 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-                    About WorksTeamWear
-                </h2>
-                <p class="mt-4 max-w-2xl text-xl text-gray-500 lg:mx-auto">
-                    We're passionate about creating high-quality custom jerseys for teams and individuals.
-                </p>
-            </div>
+  </div>
 
-            <div class="mt-12">
-                <div class="prose prose-lg mx-auto">
-                    <p>
-                        WorksTeamWear was founded in 2010 with a simple mission: to provide high-quality, customizable jerseys for sports teams, events, and individuals. Our team of designers and developers has created an innovative 2D jersey customizer that allows you to see your design in real-time.
-                    </p>
-                    <p class="mt-4">
-                        We use premium materials and state-of-the-art printing technology to ensure that your custom jersey not only looks great but also performs well and lasts for years to come.
-                    </p>
-                    <p class="mt-4">
-                        Our commitment to quality and customer satisfaction has made us a trusted name in the custom apparel industry. We work with teams of all sizes, from local recreational leagues to professional organizations.
-                    </p>
-                    <h3 class="text-xl font-bold mt-8">Our Values</h3>
-                    <ul class="mt-4 list-disc pl-5">
-                        <li>Quality: We use only the best materials and printing techniques.</li>
-                        <li>Innovation: Our 3D customizer provides a unique design experience.</li>
-                        <li>Customer Service: We're dedicated to ensuring your satisfaction.</li>
-                        <li>Sustainability: We strive to minimize our environmental impact.</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+  <!-- About Section -->
+  <div class="py-12 bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="lg:text-center">
+              <h2 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+                  About WorksTeamWear
+              </h2>
+              <p class="mt-4 max-w-2xl text-xl text-gray-500 lg:mx-auto">
+                  We're passionate about creating high-quality custom jerseys for teams and individuals.
+              </p>
+          </div>
+
+          <div class="mt-12">
+              <div class="prose prose-lg mx-auto">
+                  <p>
+                      WorksTeamWear was founded in 2010 with a simple mission: to provide high-quality, customizable jerseys for sports teams, events, and individuals. Our team of designers and developers has created an innovative 2D jersey customizer that allows you to see your design in real-time.
+                  </p>
+                  <p class="mt-4">
+                      We use premium materials and state-of-the-art printing technology to ensure that your custom jersey not only looks great but also performs well and lasts for years to come.
+                  </p>
+                  <p class="mt-4">
+                      Our commitment to quality and customer satisfaction has made us a trusted name in the custom apparel industry. We work with teams of all sizes, from local recreational leagues to professional organizations.
+                  </p>
+                  <h3 class="text-xl font-bold mt-8">Our Values</h3>
+                  <ul class="mt-4 list-disc pl-5">
+                      <li>Quality: We use only the best materials and printing techniques.</li>
+                      <li>Innovation: Our 3D customizer provides a unique design experience.</li>
+                      <li>Customer Service: We're dedicated to ensuring your satisfaction.</li>
+                      <li>Sustainability: We strive to minimize our environmental impact.</li>
+                  </ul>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- Footer from first code -->
+  <footer>
+    <br>
+    <p>
+      <a href="{% url 'facebook' %}" target="_blank" class="fa fa-facebook"></a>
+      <a href="{% url 'instagram' %}" target="_blank" class="fa fa-instagram"></a>
+    </p>
+
+    <br>
+    <div class="container mx-auto px-4">
+      <div class="text-center text-white">
+        &copy; 2025 WorksTeamWear PH
+      </div>
     </div>
+    <br>
+  </footer>
 
-        <!-- Footer -->
-    <footer class="bg-gray-900 text-white py-4 mt-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col md:flex-row justify-between">
-                <!-- Company Info -->
-                <div class="mb-4 md:mb-0">
-                    <h3 class="text-xl font-bold">WorksTeamWear</h3>
-                    <p class="mt-2 text-gray-400">Custom Jersey Design</p>
-                </div>
-    
-                <!-- Contact Info -->
-                <div>
-                    <h4 class="text-lg font-semibold">Contact Info</h4>
-                    <p class="mt-2 flex items-center text-gray-400">
-                        📞 <span class="ml-2">0998 854 8632</span>
-                    </p>
-                    <p class="mt-2 flex items-center text-gray-400">
-                        ✉️ <span class="ml-2">wtw104dante@gmail.com</span>
-                    </p>
-                </div>
-    
-                <!-- Categories -->
-                <div>
-                    <h4 class="text-lg font-semibold">Categories</h4>
-                    <p class="mt-2 flex items-center text-gray-400">
-                        👕 <span class="ml-2">Clothing (Brand)</span>
-                    </p>
-                </div>
-            </div>
-    
-            <!-- Copyright -->
-            <div class="mt-0 text-center text-gray-400">
-                &copy; 2025 WorksTeamWear. All rights reserved.
-            </div>
-        </div>
-    </footer>
+  <script>
+      const observer = new IntersectionObserver((entries, observer) => {
+          entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                  entry.target.classList.add('visible');
+              } else {
+                  entry.target.classList.remove('visible');
+              }
+          });
+      }, {
+          rootMargin: '0px 0px -100px 0px',
+      });
 
+      document.querySelectorAll('.team-member').forEach(element => {
+          observer.observe(element);
+      });
+  </script>
 
-<script>
-    const observer = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-            } else {
-                entry.target.classList.remove('visible');
-            }
-        });
-    }, {
-        rootMargin: '0px 0px -100px 0px', // Adjusts when to trigger the intersection
-    });
-
-    document.querySelectorAll('.team-member').forEach(element => {
-        observer.observe(element);
-    });
-</script>
+  <!-- Customer Support Widget -->
+  {% block support_widget %}
+      {% include 'ecom/customer_support_widget.html' %}
+  {% endblock %}
 </body>
 </html>
