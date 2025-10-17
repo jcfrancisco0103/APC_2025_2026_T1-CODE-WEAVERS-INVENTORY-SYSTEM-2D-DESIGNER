@@ -138,7 +138,7 @@ def get_transactions_by_month(request):
         if not order_items.exists():
             continue
         
-        total_amount = sum(float(item.price) * item.quantity for item in order_items)
+        total_amount = sum(float(item.price) * item.quantity for item in order_items) + float(order.delivery_fee)
         transactions.append({
             'user_name': order.customer.user.username if order.customer and order.customer.user else 'Unknown',
             'order_id': order.order_ref or '',
@@ -3216,6 +3216,12 @@ def admin_transactions_view(request):
         orders = orders.filter(created_at__month=month)
     if year:
         orders = orders.filter(created_at__year=year)
+    if transaction_type:
+        # Filter by payment method based on transaction type
+        if transaction_type == 'COD':
+            orders = orders.filter(payment_method='cod')
+        elif transaction_type == 'Credit':
+            orders = orders.filter(payment_method='paypal')  # or other non-COD methods
 
     # Calculate summary data
     total_revenue = sum(float(order.get_total_amount()) for order in orders)
@@ -3239,12 +3245,21 @@ def admin_transactions_view(request):
             product_details.append(f"{item.product.name} (Size: {item.size}, Qty: {item.quantity})")
         products_text = ', '.join(product_details) if product_details else 'No products'
 
+        # Map payment method to display type
+        if order.payment_method == 'cod':
+            payment_type = 'COD'
+        elif order.payment_method == 'paypal':
+            payment_type = 'Credit'
+        else:
+            # Default for any other payment methods (card, etc.)
+            payment_type = 'Credit'
+
         transactions.append({
             'date': order.created_at.strftime('%Y-%m-%d'),
             'user_name': customer_name,
             'customer_id': customer_id,
             'order_id': order.order_ref or f"ORD-{order.id}",
-            'type': 'credit',  # All completed orders are credits
+            'type': payment_type,
             'products': products_text,
             'amount': float(order.get_total_amount()),
         })

@@ -173,8 +173,9 @@ class Orders(models.Model):
         return f"Order {self.order_ref or self.id} - {self.customer.user.username if self.customer else 'No Customer'}"
     
     def get_total_amount(self):
-        """Calculate total amount from all order items"""
-        return sum(item.price * item.quantity for item in self.orderitem_set.all())
+        """Calculate total amount from all order items including delivery fee"""
+        items_total = sum(item.price * item.quantity for item in self.orderitem_set.all())
+        return items_total + self.delivery_fee
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Orders, on_delete=models.CASCADE)
