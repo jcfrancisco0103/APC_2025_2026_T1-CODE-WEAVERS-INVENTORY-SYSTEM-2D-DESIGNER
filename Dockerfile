@@ -19,18 +19,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . /app/
 
-# Create directories for static and media files
-RUN mkdir -p /app/staticfiles /app/media
-
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
-# Create non-root user
-RUN adduser --disabled-password --gecos '' appuser
-RUN chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
+RUN git fetch origin
+RUN git pull
 
 # Expose port
 EXPOSE 8000
