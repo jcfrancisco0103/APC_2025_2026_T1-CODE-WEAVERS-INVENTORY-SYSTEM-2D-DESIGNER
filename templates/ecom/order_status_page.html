@@ -99,6 +99,7 @@
                                 <thead>
                                     <tr>
                                         <th>Product</th>
+                                        <th>Image</th>
                                         <th>Size</th>
                                         <th>Quantity</th>
                                         <th>Price</th>
@@ -109,10 +110,52 @@
                                     {% for item in order_dict.products %}
                                     <tr>
                                         <td>{{ item.item.product.name }}</td>
+                                        <td>
+                                            {% if item.item.product.product_image %}
+                                                <img src="{{ item.item.product.product_image.url }}" 
+                                                     alt="{{ item.item.product.name }}" 
+                                                     class="product-image"
+                                                     style="max-width: 80px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                            {% else %}
+                                                <div style="width: 80px; height: 60px; background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #6c757d; font-size: 12px;">
+                                                    No Image
+                                                </div>
+                                            {% endif %}
+                                        </td>
                                         <td>{% if item.size %}{{ item.size }}{% else %}{{ item.item.product.size }}{% endif %}</td>
                                         <td>{{ item.quantity }}</td>
                                         <td>₱{{ item.unit_price|floatformat:2|intcomma }}</td>
                                         <td>₱{{ item.line_total|floatformat:2|intcomma }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% for custom_item in order_dict.custom_items %}
+                                    <tr>
+                                        <td>Custom Jersey{% if custom_item.custom_design.back_name %} - {{ custom_item.custom_design.back_name }}{% endif %}</td>
+                                        <td>
+                                            {% if custom_item.custom_design.design_image %}
+                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                    <img src="{{ custom_item.custom_design.design_image.url }}" 
+                                                         alt="Custom Jersey Design" 
+                                                         class="product-image"
+                                                         style="max-width: 80px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                                    <a href="{{ custom_item.custom_design.design_image.url }}" 
+                                                       download="custom_jersey_design_{{ custom_item.id }}.png" 
+                                                       class="btn btn-sm btn-outline-primary" 
+                                                       title="Download Design Image" 
+                                                       style="padding: 4px 8px; font-size: 12px;">
+                                                        <i class="fa fa-download"></i>
+                                                    </a>
+                                                </div>
+                                            {% else %}
+                                                <div style="width: 80px; height: 60px; background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #6c757d; font-size: 12px;">
+                                                    Custom Design
+                                                </div>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ custom_item.size }}</td>
+                                        <td>{{ custom_item.quantity }}</td>
+                                        <td>₱{{ custom_item.price|floatformat:2|intcomma }}</td>
+                                        <td>₱{{ custom_item.line_total|floatformat:2|intcomma }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

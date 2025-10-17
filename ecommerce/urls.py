@@ -78,6 +78,8 @@ urlpatterns = [
     path('admin-view-shipping-orders', views.admin_view_shipping_orders, name='admin-view-shipping-orders'),
     path('admin-view-delivered-orders', views.admin_view_delivered_orders, name='admin-view-delivered-orders'),
     path('admin-view-cancelled-orders', views.admin_view_cancelled_orders, name='admin-view-cancelled-orders'),
+    path('admin-view-pre-orders', views.admin_view_pre_orders, name='admin-view-pre-orders'),
+    path('admin/orders/<int:order_id>/detail/', views.admin_order_detail_ajax, name='admin-order-detail-ajax'),
     path('delete-order/<int:pk>', views.delete_order_view,name='delete-order'),
     path('update-order/<int:pk>', views.update_order_view,name='update-order'),
 
@@ -102,12 +104,12 @@ urlpatterns = [
     path('add-to-cart/<int:pk>/', views.add_to_cart_view,name='add-to-cart'),
     path('cart', views.cart_view,name='cart'),
     path('remove-from-cart/<int:pk>', views.remove_from_cart_view,name='remove-from-cart'),
+    path('remove-custom-item/<int:pk>/', views.remove_custom_item_view, name='remove-custom-item'),
     path('customer-address', views.customer_address_view,name='customer-address'),
     path('payment-success/', views.payment_success_view,name='payment-success'),
     path('customizer/', views.jersey_customizer, name='customizer'),
     path('jersey-customizer/advanced/', views.jersey_customizer_advanced_view, name='jersey-customizer-advanced'),
 
-    path('pre-order', views.pre_order, name='pre_order'),
     path('home', views.home,name='home'),
     # Removed the view_customer URL pattern as view_customer_view no longer exists
     # path('view_customer', views.view_customer_view, name='view_customer'),
@@ -177,6 +179,7 @@ urlpatterns = [
     path('api/admin/take-handover/', chatbot_views.admin_take_handover, name='admin-take-handover'),
     path('api/admin/send-message/', chatbot_views.admin_send_message, name='admin-send-message'),
     path('api/admin/resolve-handover/', chatbot_views.admin_resolve_handover, name='admin-resolve-handover'),
+    path('api/admin/clear-all-chats/', chatbot_views.admin_clear_all_chats, name='admin-clear-all-chats'),
     
     # Customer Support Chat URLs
     path('api/support/start-session/', chatbot_views.support_start_session, name='support-start-session'),
@@ -190,6 +193,9 @@ urlpatterns = [
 
     # Admin Transactions
     path('admin-transactions/', views.admin_transactions_view, name='admin-transactions'),
+
+    # Custom Jersey Order API
+    path('api/add-custom-order/', views.add_custom_order, name='api-add-custom-order'),
 
 ]
 

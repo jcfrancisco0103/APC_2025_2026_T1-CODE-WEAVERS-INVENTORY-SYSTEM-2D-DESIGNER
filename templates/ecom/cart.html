@@ -565,7 +565,44 @@
             </a>
           </td>
         </tr>
-      {% empty %}
+      {% endfor %}
+      
+      {% for custom_item in custom_items %}
+        <tr style="background-color: #f8f9fa;">
+          <td>
+            <strong>Custom Jersey Design</strong>
+            {% if custom_item.custom_item.additional_info %}
+              <br><small class="text-muted">{{ custom_item.custom_item.additional_info }}</small>
+            {% endif %}
+          </td>
+          <td>
+            {% if custom_item.custom_item.custom_design.design_image %}
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <img src="{{ custom_item.custom_item.custom_design.design_image.url }}" alt="Custom Design" height="50px" width="50px" style="border-radius: 4px;">
+                <a href="{{ custom_item.custom_item.custom_design.design_image.url }}" download="custom_jersey_design_{{ custom_item.custom_item.id }}.png" 
+                   class="btn btn-sm btn-outline-primary" title="Download Design Image" style="padding: 2px 6px; font-size: 11px;">
+                  <span class="glyphicon glyphicon-download-alt"></span>
+                </a>
+              </div>
+            {% else %}
+              <div style="width: 50px; height: 50px; background-color: #e9ecef; border: 1px solid #dee2e6; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #6c757d;">
+                Custom
+              </div>
+            {% endif %}
+          </td>
+          <td>₱ {{ custom_item.price|floatformat:2 }}</td>
+          <td><span class="size-badge">{{ custom_item.size }}</span></td>
+          <td><span class="quantity-badge">{{ custom_item.quantity }}</span></td>
+          <td>Custom jersey design with personalized elements</td>
+          <td>
+            <a class="btn btn-danger btn-xs" href="#" onclick="removeCustomItem({{ custom_item.custom_item.id }})">
+              <span class="glyphicon glyphicon-trash"></span>
+            </a>
+          </td>
+        </tr>
+      {% endfor %}
+      
+      {% if not products and not custom_items %}
         <tr>
           <td colspan="7" class="text-center" style="padding: 40px; color: #666;">
             <div style="font-size: 18px; margin-bottom: 10px;">🛒</div>
@@ -574,7 +611,7 @@
             <a href="{% url 'customer-home' %}" class="btn btn-primary">Continue Shopping</a>
           </td>
         </tr>
-      {% endfor %}
+      {% endif %}
     </table>
 
     <!-- Delivery Address Display -->
@@ -1147,8 +1184,8 @@
       const codForm = document.getElementById('cod-form');
       const paymentButtons = document.querySelectorAll('.payment-method-btn');
     
-      // Check if cart is empty
-      const cartIsEmpty = {{ products|length|default_if_none:0 }} === 0;
+      // Check if cart is empty (including both regular products and custom items)
+      const cartIsEmpty = {{ products|length|default_if_none:0 }} === 0 && {{ custom_items|length|default_if_none:0 }} === 0;
     
       openModalBtn.addEventListener('click', (e) => {
         if (cartIsEmpty) {
@@ -1329,6 +1366,34 @@
       
       // Call the function when the page loads
       document.addEventListener('DOMContentLoaded', updateAddressDisplay);
+
+      // Function to remove custom item from cart
+      function removeCustomItem(customItemId) {
+        if (confirm('Are you sure you want to remove this custom jersey from your cart?')) {
+          fetch(`/remove-custom-item/${customItemId}/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+          })
+            .then(async response => {
+              const ct = response.headers.get('content-type') || '';
+              if (!response.ok || !ct.includes('application/json')) { throw new Error('Request failed'); }
+              return response.json();
+            })
+            .then(data => {
+              if (data.status === 'success') {
+                location.reload(); // Refresh the cart page
+              } else {
+                alert(data.message || 'Failed to remove item from cart');
+              }
+            })
+            .catch(err => {
+              console.warn('Remove custom item failed:', err);
+              alert('Failed to remove item from cart. Please try again.');
+            });
+        }
+      }
     </script>
 
     <script>
@@ -1932,6 +1997,8 @@ function deleteAddress(addressId) {
       });
   }
 }
+
+
 
 // saveNewAddress function is now defined in the earlier script block
 

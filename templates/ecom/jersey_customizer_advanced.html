@@ -31,7 +31,7 @@
                   <div class="space-y-4">
                       <div>
                           <label class="block mb-2">Jersey Type</label>
-                          <select id="jersey-type" class="w-full p-2 border rounded" title="Select jersey type">
+                          <select id="jersey-type" class="w-full p-4 border rounded" title="Select jersey type">
                               <option value="tshirt">T-Shirt Style</option>
                               <option value="sleeveless">Sleeveless Style</option>
                           </select>
@@ -45,7 +45,7 @@
                       </div>
                       <div>
                           <label class="block mb-2">Body Color</label>
-                          <input type="color" id="primary-color" value="#ffffff" class="w-full h-10" title="Select body color">
+                          <input type="color" id="primary-color" value="#ffffff" class="w-full h-14" title="Select body color">
                           <!-- Vibrant Color Palette Presets -->
                           <div class="mt-2">
                               <label class="block text-xs text-gray-600 mb-1">Quick Color Presets</label>
@@ -63,7 +63,7 @@
                       </div>
                       <div>
                           <label class="block mb-2">Sleeve Color</label>
-                          <input type="color" id="secondary-color" value="#ffffff" class="w-full h-10" title="Select sleeve color">
+                          <input type="color" id="secondary-color" value="#ffffff" class="w-full h-14" title="Select sleeve color">
                           <!-- Vibrant Sleeve Color Palette Presets -->
                           <div class="mt-2">
                               <label class="block text-xs text-gray-600 mb-1">Quick Color Presets</label>
@@ -81,7 +81,7 @@
                       </div>
                       <div>
                           <label class="block mb-2">Pattern</label>
-                          <select id="pattern" class="w-full p-2 border rounded">
+                          <select id="pattern" class="w-full p-4 border rounded">
                               <option value="none">None</option>
                               <option value="stripes">Stripes</option>
                               <option value="dots">Dots</option>
@@ -117,7 +117,7 @@
                               <div id="ai-controls" style="display: none;" class="space-y-3">
                                   <div>
                                       <label class="block text-sm font-medium text-purple-700 mb-1">Generation Type</label>
-                                      <select id="ai-generation-type" class="w-full p-2 border border-purple-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                                      <select id="ai-generation-type" class="w-full p-4 border border-purple-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
                                           <option value="color-scheme">Smart Color Scheme</option>
                                           <option value="pattern-match">Pattern Matching</option>
                                           <option value="team-style">Team Style Generator</option>
@@ -165,7 +165,7 @@
                       <div id="front-options">
                           <div>
                               <label class="block mb-2">Number</label>
-                              <input type="number" id="front-number" class="w-full p-3 border rounded h-12" min="0" max="99" title="Enter front number">
+                              <input type="number" id="front-number" class="w-full p-3 border rounded h-16" min="0" max="99" title="Enter front number">
                           </div>
                           <div class="mt-2">
                               <label class="block mb-2">Number Position</label>
@@ -190,7 +190,7 @@
                       <div id="back-options" style="display: none;">
                           <div>
                               <label class="block mb-2">Name</label>
-                              <input type="text" id="back-name" class="w-full p-3 border rounded h-12" maxlength="15" placeholder="Enter back name">
+                              <input type="text" id="back-name" class="w-full p-3 border rounded h-16" maxlength="15" placeholder="Enter back name">
                           </div>
                           <div class="mt-2">
                               <label class="block mb-2">Name Position</label>
@@ -211,7 +211,7 @@
                           </div>
                           <div class="mt-2">
                               <label class="block mb-2">Number</label>
-                              <input type="number" id="back-number" class="w-full p-3 border rounded h-12" min="0" max="99" title="Enter back number">
+                              <input type="number" id="back-number" class="w-full p-3 border rounded h-16" min="0" max="99" title="Enter back number">
                           </div>
                           <div class="mt-2">
                               <label class="block mb-2">Number Position</label>
@@ -234,16 +234,16 @@
                       
                       <div>
                           <label class="block mb-2">Text Color</label>
-                          <input type="color" id="text-color" value="#000000" class="w-full h-10">
+                          <input type="color" id="text-color" value="#000000" class="w-full h-14">
                       </div>
                       <div>
                           <label class="block mb-2">Logo</label>
-                          <input type="file" id="logo-upload" class="w-full p-2 border rounded" accept="image/*">
+                          <input type="file" id="logo-upload" class="w-full p-4 border rounded" accept="image/*">
                       </div>
                       <div id="logo-options" style="display: none;">
                           <div class="mt-2">
                               <label class="block mb-2">Logo Placement</label>
-                              <select id="logo-placement" class="w-full p-2 border rounded">
+                              <select id="logo-placement" class="w-full p-4 border rounded">
                                   <option value="front">Front</option>
                                   <option value="back">Back</option>
                               </select>
@@ -271,7 +271,7 @@
                           </div>
                       </div>
                       <div class="pt-4 border-t border-gray-200 space-y-2">
-                          <button id="clear-all" class="w-full p-2 border border-gray-300 rounded hover:bg-gray-50">
+                          <button id="clear-all" class="w-full p-4 border border-gray-300 rounded hover:bg-gray-50">
                               Clear All
                           </button>
                           <div class="button-container" >
@@ -279,9 +279,9 @@
                                 Download Design
                             </button>
                           </div>
-                          <a href="{% url 'pre_order' %}" class="block w-full p-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-center">
-                              Pre-order This Design
-                          </a>
+                          <button id="add-to-cart-btn" class="block w-full p-2 bg-green-600 text-white rounded hover:bg-green-700 text-center">
+                              <i class="fa fa-shopping-cart"></i> Add to Cart
+                          </button>
                       </div>
                   </div>
               </div>
@@ -289,9 +289,69 @@
       </div>
   </div>
 
+  <!-- Add to Cart Modal -->
+  <div id="add-to-cart-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold text-gray-900">Add Custom Jersey to Cart</h3>
+              <button id="close-modal" class="text-gray-400 hover:text-gray-600">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+              </button>
+          </div>
+          
+          <form id="add-to-cart-form" class="space-y-4">
+              <div>
+                  <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                  <input type="number" id="quantity" name="quantity" min="1" max="99" value="1" 
+                         class="w-full p-3 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500" required>
+              </div>
+              
+              <div>
+                  <label for="size" class="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                  <select id="size" name="size" class="w-full p-3 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500" required>
+                      <option value="" disabled selected>Choose a size</option>
+                      <option value="XS">Extra Small (XS)</option>
+                      <option value="S">Small (S)</option>
+                      <option value="M">Medium (M)</option>
+                      <option value="L">Large (L)</option>
+                      <option value="XL">Extra Large (XL)</option>
+                      <option value="XXL">Double Extra Large (XXL)</option>
+                      <option value="XXXL">Triple Extra Large (XXXL)</option>
+                  </select>
+              </div>
+              
+              <div>
+                  <label for="additional-info" class="block text-sm font-medium text-gray-700 mb-1">Additional Information</label>
+                  <textarea id="additional-info" name="additional-info" rows="3" 
+                            placeholder="Any special requests or notes..."
+                            class="w-full p-3 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"></textarea>
+              </div>
+              
+              <div class="bg-gray-50 p-3 rounded-md">
+                  <h4 class="text-sm font-medium text-gray-700 mb-2">Design Summary:</h4>
+                  <div id="design-summary" class="text-sm text-gray-600 space-y-1">
+                      <!-- Design details will be populated here -->
+                  </div>
+              </div>
+              
+              <div class="pt-4">
+                  <button type="submit" 
+                          class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors">
+                      <i class="fa fa-shopping-cart"></i> Add to Cart
+                  </button>
+              </div>
+          </form>
+      </div>
+  </div>
+
     <!-- Alpine.js for UI interactions -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   </div>
+
+  <!-- CSRF Token for AJAX requests -->
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 
   <!-- Custom JavaScript -->
   <script>

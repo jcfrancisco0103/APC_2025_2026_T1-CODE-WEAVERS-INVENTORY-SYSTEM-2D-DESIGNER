@@ -182,10 +182,13 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4">
-                                <div class="text-sm text-gray-900">{{ items|length }} item{{ items|length|pluralize }}</div>
+                                <div class="text-sm text-gray-900">{{ items|length }}{% if order_data.custom_order_items %} + {{ order_data.custom_order_items|length }}{% endif %} item{{ items|length|add:order_data.custom_order_items|length|pluralize }}</div>
                                 <div class="text-xs text-gray-500 max-w-xs">
                                     {% for item in items %}
-                                    {{ item.product.name }} ({{ item.size }}){% if item.quantity > 1 %} ({{ item.quantity }}x){% endif %}{% if not forloop.last %}, {% endif %}
+                                    {{ item.product.name }} ({{ item.size }}){% if item.quantity > 1 %} ({{ item.quantity }}x){% endif %}{% if not forloop.last or order_data.custom_order_items %}, {% endif %}
+                                    {% endfor %}
+                                    {% for custom_item in order_data.custom_order_items %}
+                                    Custom Jersey - {{ custom_item.custom_item.custom_design.jersey_name }} ({{ custom_item.size }}){% if custom_item.quantity > 1 %} ({{ custom_item.quantity }}x){% endif %}{% if not forloop.last %}, {% endif %}
                                     {% endfor %}
                                 </div>
                             </td>

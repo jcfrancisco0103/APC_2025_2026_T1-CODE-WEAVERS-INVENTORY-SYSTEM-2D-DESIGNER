@@ -50,10 +50,14 @@
                 <i data-lucide="users" class="mr-3 h-5 w-5"></i>
                 Users
             </a>
-            <a href="{% url 'admin-view-booking' %}" class="nav-item {% if request.resolver_match.url_name == 'admin-view-booking' or request.resolver_match.url_name == 'admin-view-processing-orders' or request.resolver_match.url_name == 'admin-view-confirmed-orders' or request.resolver_match.url_name == 'admin-view-shipping-orders' or request.resolver_match.url_name == 'admin-view-delivered-orders' or request.resolver_match.url_name == 'admin-view-cancelled-orders' %}bg-blue-50 text-blue-700{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+            <a href="{% url 'admin-view-booking' %}" class="nav-item {% if request.resolver_match.url_name == 'admin-view-booking' or request.resolver_match.url_name == 'admin-view-processing-orders' or request.resolver_match.url_name == 'admin-view-confirmed-orders' or request.resolver_match.url_name == 'admin-view-shipping-orders' or request.resolver_match.url_name == 'admin-view-delivered-orders' %}bg-blue-50 text-blue-700{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                 <i data-lucide="shopping-cart" class="mr-3 h-5 w-5"></i>
                 Orders
             </a>
+            <!-- <a href="{% url 'admin-view-pre-orders' %}" class="nav-item {% if request.resolver_match.url_name == 'admin-view-pre-orders' %}bg-blue-50 text-blue-700{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                        <i data-lucide="clock" class="text-gray-400 mr-3 h-6 w-6"></i>
+                        Pre-Orders
+                    </a> -->
             <a href="{% url 'admin-products' %}" class="nav-item {% if request.resolver_match.url_name == 'admin-products' %}bg-blue-50 text-blue-700{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                 <i data-lucide="shirt" class="mr-3 h-5 w-5"></i>
                 Products

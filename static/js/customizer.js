@@ -210,7 +210,7 @@ const logoZSlider = document.getElementById("logo-z")
           child.geometry.computeBoundingBox();
           const center = new THREE.Vector3();
           child.geometry.boundingBox.getCenter(center);
-          console.log(`Mesh "${child.name}": bounding box center x = ${center.x.toFixed(2)}`);
+          // console.log(`Mesh "${child.name}": bounding box center x = ${center.x.toFixed(2)}`);
 
           // Threshold: central (|x| <= 0.2) = body, sides = sleeves (adjust after logging)
           if (Math.abs(center.x) <= 0.2) {
@@ -233,10 +233,13 @@ const logoZSlider = document.getElementById("logo-z")
     },
     // onProgress callback
     (xhr) => {
+      // Progress tracking without excessive logging
       if (xhr.lengthComputable) {
-        console.log(`Model loading: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% loaded`)
-      } else {
-        console.log(`Model loading: ${xhr.loaded} bytes loaded`)
+        const progress = (xhr.loaded / xhr.total * 100).toFixed(0)
+        // Only log at 25%, 50%, 75%, and 100% to reduce console spam
+        if (progress % 25 === 0 && progress !== '0') {
+          console.log(`Model loading: ${progress}% loaded`)
+        }
       }
     },
     // onError callback
@@ -247,7 +250,7 @@ const logoZSlider = document.getElementById("logo-z")
 
   // Create text and logo elements
   function createTextElements() {
-    console.log("createTextElements called")
+    // console.log("createTextElements called")
     // Remove existing text elements
     if (jersey) {
       if (frontNumberMesh) jersey.remove(frontNumberMesh)
@@ -446,12 +449,12 @@ const logoZSlider = document.getElementById("logo-z")
                   m.depthWrite = true
                   m.needsUpdate = true
                   assignedAny = true
-                  console.log('Assigned painted map to material index', idx, 'of mesh', targetMesh.name || targetMesh.uuid)
+                  // console.log('Assigned painted map to material index', idx, 'of mesh', targetMesh.name || targetMesh.uuid)
                 } catch (e) { console.warn('assign to sub-material failed', idx, e) }
               })
 
               if (assignedAny) {
-                console.log('Painted into existing material.map for', targetMesh.name || targetMesh.uuid)
+                // console.log('Painted into existing material.map for', targetMesh.name || targetMesh.uuid)
                 return true
               }
             } catch (e) { console.warn('existing material detection failed', e) }
@@ -476,13 +479,13 @@ const logoZSlider = document.getElementById("logo-z")
               if (Array.isArray(existingMat)) {
                 for (let i = 0; i < existingMat.length; i++) {
                   if (tryAssign(existingMat[i])) {
-                    console.log('Assigned painted map after flipY toggle to material index', i)
+                    // console.log('Assigned painted map after flipY toggle to material index', i)
                     return true
                   }
                 }
               } else if (existingMat) {
                 if (tryAssign(existingMat)) {
-                  console.log('Assigned painted map after flipY toggle to single material')
+                  // console.log('Assigned painted map after flipY toggle to single material')
                   return true
                 }
               }
@@ -493,7 +496,7 @@ const logoZSlider = document.getElementById("logo-z")
               const newMat = new THREE.MeshStandardMaterial({ map: newTex, side: THREE.DoubleSide })
               try { if (!paintedMaterials.has(targetMesh.uuid)) paintedMaterials.set(targetMesh.uuid, targetMesh.material) } catch (e) {}
               targetMesh.material = newMat
-              console.log('Replaced material with MeshStandardMaterial for painted mesh', targetMesh.name || targetMesh.uuid)
+              // console.log('Replaced material with MeshStandardMaterial for painted mesh', targetMesh.name || targetMesh.uuid)
               return true
             } catch (e) {
               console.warn('Failed to create new MeshStandardMaterial for painted texture', e)
@@ -502,7 +505,7 @@ const logoZSlider = document.getElementById("logo-z")
                 const basicMat = new THREE.MeshBasicMaterial({ map: newTex, side: THREE.DoubleSide, transparent: true })
                 if (!paintedMaterials.has(targetMesh.uuid)) paintedMaterials.set(targetMesh.uuid, targetMesh.material)
                 targetMesh.material = basicMat
-                console.log('Fallback: Applied basic painted material', targetMesh.name || targetMesh.uuid)
+                // console.log('Fallback: Applied basic painted material', targetMesh.name || targetMesh.uuid)
                 return true
               } catch (e2) { console.warn('fallback painting failed', e2) }
             }
@@ -551,7 +554,7 @@ const logoZSlider = document.getElementById("logo-z")
 
               let point, normalWorld
               if (intersects && intersects.length > 0) {
-                console.log('raycast primary hit count', intersects.length, 'hit object', intersects[0].object.name || intersects[0].object.uuid, 'distance', intersects[0].distance)
+                // console.log('raycast primary hit count', intersects.length, 'hit object', intersects[0].object.name || intersects[0].object.uuid, 'distance', intersects[0].distance)
                 point = intersects[0].point.clone()
                 normalWorld = intersects[0].face.normal.clone().transformDirection(mesh.matrixWorld).normalize()
                 // If intersection provides UV coordinates, attempt to paint into the mesh texture directly
@@ -564,7 +567,7 @@ const logoZSlider = document.getElementById("logo-z")
                       // increase size factor so the painted logo is visible by default
                       const painted = paintLogoToMeshTexture(mesh, img, uv, 0.6 * config.logoSize)
                       if (painted) {
-                        console.log('Painted logo into mesh texture via UV')
+                        // console.log('Painted logo into mesh texture via UV')
                         try {
                           // Create a small overlay for immediate visual feedback, attached to jersey
                           const aspect = (texture.image && texture.image.width && texture.image.height) ? (texture.image.height / texture.image.width) : 1
@@ -597,7 +600,7 @@ const logoZSlider = document.getElementById("logo-z")
                 raycaster.set(camera.position, dirToPos)
                 intersects = raycaster.intersectObject(mesh, true)
                 if (intersects && intersects.length > 0) {
-                  console.log('raycast camera->pos hit count', intersects.length, 'hit object', intersects[0].object.name || intersects[0].object.uuid, 'distance', intersects[0].distance)
+                  // console.log('raycast camera->pos hit count', intersects.length, 'hit object', intersects[0].object.name || intersects[0].object.uuid, 'distance', intersects[0].distance)
                   point = intersects[0].point.clone()
                   normalWorld = intersects[0].face.normal.clone().transformDirection(mesh.matrixWorld).normalize()
                 } else {
@@ -608,7 +611,7 @@ const logoZSlider = document.getElementById("logo-z")
                   raycaster.set(above, downDir)
                   intersects = raycaster.intersectObject(mesh, true)
                   if (intersects && intersects.length > 0) {
-                    console.log('raycast downward hit count', intersects.length, 'hit object', intersects[0].object.name || intersects[0].object.uuid, 'distance', intersects[0].distance)
+                    // console.log('raycast downward hit count', intersects.length, 'hit object', intersects[0].object.name || intersects[0].object.uuid, 'distance', intersects[0].distance)
                     point = intersects[0].point.clone()
                     normalWorld = intersects[0].face.normal.clone().transformDirection(mesh.matrixWorld).normalize()
                   } else {
@@ -634,7 +637,7 @@ const logoZSlider = document.getElementById("logo-z")
                           point = hits[0].point.clone()
                           normalWorld = hits[0].face.normal.clone().transformDirection(mesh.matrixWorld).normalize()
                           found = true
-                          console.log('Grid-scan found hit at', i, j)
+                          // console.log('Grid-scan found hit at', i, j)
                         }
                       }
                     }
@@ -954,83 +957,251 @@ const logoZSlider = document.getElementById("logo-z")
     renderer.render(scene, camera)
   }
 
-  // Multi-view download function
+  // Enhanced multi-view download function with proper template rendering
   async function downloadMultiViewDesign() {
-    // Store original camera position and rotation
-    const originalPosition = camera.position.clone()
-    const originalRotation = jersey ? jersey.rotation.clone() : new THREE.Euler()
-    const originalControlsEnabled = controls.enabled
+    try {
+      // Show loading indicator
+      const loadingIndicator = document.createElement('div')
+      loadingIndicator.id = 'download-loading'
+      loadingIndicator.innerHTML = `
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px;">
+          <div style="text-align: center;">
+            <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+            <div>Generating design images...</div>
+          </div>
+        </div>
+        <style>
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      `
+      document.body.appendChild(loadingIndicator)
 
-    // Disable controls during capture
-    controls.enabled = false
+      // Store original states
+      const originalPosition = camera.position.clone()
+      const originalRotation = jersey ? jersey.rotation.clone() : new THREE.Euler()
+      const originalControlsEnabled = controls.enabled
+      const originalRendererSize = { width: renderer.domElement.width, height: renderer.domElement.height }
 
-    // Define the views to capture
-    const views = [
-      { name: "front", position: [0, 0, 2.5], rotation: 0 },
-      { name: "angle", position: [1.5, 0, 2], rotation: -Math.PI / 2},
-      { name: "back", position: [0, 0, 2.5], rotation: Math.PI },
-    ]
+      // Disable controls and interactions during capture
+      controls.enabled = false
+      
+      // Set high-quality render size for better image quality
+      const renderWidth = 800
+      const renderHeight = 800
+      renderer.setSize(renderWidth, renderHeight, false)
+      camera.aspect = renderWidth / renderHeight
+      camera.updateProjectionMatrix()
 
-    // Create a canvas for the final layout
-    const finalCanvas = document.createElement("canvas")
-    const ctx = finalCanvas.getContext("2d")
+      // Define enhanced views with better positioning
+      const views = [
+        { 
+          name: "front", 
+          position: [0, 0, 3], 
+          rotation: 0,
+          label: "Front View"
+        },
+        { 
+          name: "angle", 
+          position: [2, 0.5, 2.5], 
+          rotation: -Math.PI / 4,
+          label: "Side View"
+        },
+        { 
+          name: "back", 
+          position: [0, 0, 3], 
+          rotation: Math.PI,
+          label: "Back View"
+        },
+      ]
 
-    // Set canvas size for 3 views side by side
-    finalCanvas.width = 1920 // 640 * 3
-    finalCanvas.height = 640
+      // Create enhanced canvas with labels and better layout
+      const finalCanvas = document.createElement("canvas")
+      const ctx = finalCanvas.getContext("2d")
+      
+      // Enhanced canvas size with padding and labels
+      const viewWidth = renderWidth
+      const viewHeight = renderHeight
+      const padding = 40
+      const labelHeight = 60
+      
+      finalCanvas.width = (viewWidth * views.length) + (padding * (views.length + 1))
+      finalCanvas.height = viewHeight + labelHeight + (padding * 2)
 
-    // Capture each view
-    for (let i = 0; i < views.length; i++) {
-      const view = views[i]
+      // Set white background
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
 
-      // Set jersey rotation based on view
-      if (jersey) {
-        jersey.rotation.y = view.rotation
-      }
+      // Capture each view with enhanced quality
+      for (let i = 0; i < views.length; i++) {
+        const view = views[i]
 
-      // Position camera for this view
-      camera.position.set(view.position[0], view.position[1], view.position[2])
+        // Smooth camera transition
+        camera.position.set(view.position[0], view.position[1], view.position[2])
+        camera.lookAt(0, 0, 0)
 
-      // Update visibility of elements based on view
-      if (frontNumberMesh) frontNumberMesh.visible = view.name !== "back"
-      if (backNameMesh) backNameMesh.visible = view.name === "back"
-      if (backNumberMesh) backNumberMesh.visible = view.name === "back"
-      if (logoMesh) {
-        if (view.name === "front" || view.name === "angle") {
-          logoMesh.visible = config.logoPlacement === "front"
-        } else {
-          logoMesh.visible = config.logoPlacement === "back"
+        // Set jersey rotation with smooth transition
+        if (jersey) {
+          jersey.rotation.y = view.rotation
         }
+
+        // Update element visibility based on view
+        if (frontNumberMesh) {
+          frontNumberMesh.visible = view.name !== "back"
+        }
+        if (backNameMesh) {
+          backNameMesh.visible = view.name === "back"
+        }
+        if (backNumberMesh) {
+          backNumberMesh.visible = view.name === "back"
+        }
+        if (logoMesh) {
+          if (view.name === "front" || view.name === "angle") {
+            logoMesh.visible = config.logoPlacement === "front"
+          } else {
+            logoMesh.visible = config.logoPlacement === "back"
+          }
+        }
+
+        // Force multiple renders for stability
+        for (let j = 0; j < 3; j++) {
+          renderer.render(scene, camera)
+        }
+
+        // Wait a moment for rendering to complete
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Get high-quality image data
+        const imageData = renderer.domElement.toDataURL("image/png", 1.0)
+
+        // Load and process the image
+        const img = new Image()
+        img.crossOrigin = "anonymous"
+        
+        await new Promise((resolve) => {
+          img.onload = () => {
+            // Calculate position for this view
+            const x = padding + (i * (viewWidth + padding))
+            const y = padding + labelHeight
+
+            // Draw the jersey image
+            ctx.drawImage(img, x, y, viewWidth, viewHeight)
+
+            // Add view label
+            ctx.fillStyle = '#333333'
+            ctx.font = 'bold 24px Arial, sans-serif'
+            ctx.textAlign = 'center'
+            ctx.fillText(view.label, x + (viewWidth / 2), padding + 30)
+
+            // Add border around image
+            ctx.strokeStyle = '#cccccc'
+            ctx.lineWidth = 2
+            ctx.strokeRect(x, y, viewWidth, viewHeight)
+
+            resolve()
+          }
+          img.src = imageData
+        })
       }
 
-      // Render the scene
+      // Add design information footer
+      ctx.fillStyle = '#666666'
+      ctx.font = '16px Arial, sans-serif'
+      ctx.textAlign = 'left'
+      const footerY = finalCanvas.height - 15
+      ctx.fillText(`Jersey Design - Generated on ${new Date().toLocaleDateString()}`, padding, footerY)
+      
+      // Add customization details
+      ctx.textAlign = 'right'
+      const details = []
+      if (config.frontNumber) details.push(`Front #: ${config.frontNumber}`)
+      if (config.backName) details.push(`Name: ${config.backName}`)
+      if (config.backNumber) details.push(`Back #: ${config.backNumber}`)
+      
+      if (details.length > 0) {
+        ctx.fillText(details.join(' | '), finalCanvas.width - padding, footerY)
+      }
+
+      // Restore original renderer settings
+      renderer.setSize(originalRendererSize.width, originalRendererSize.height, false)
+      camera.aspect = originalRendererSize.width / originalRendererSize.height
+      camera.updateProjectionMatrix()
+
+      // Restore original states
+      camera.position.copy(originalPosition)
+      if (jersey) jersey.rotation.copy(originalRotation)
+      controls.enabled = originalControlsEnabled
+
+      // Restore element visibility
+      updateElementsVisibility()
+
+      // Final render to restore display
       renderer.render(scene, camera)
 
-      // Get the image data
-      const imageData = renderer.domElement.toDataURL("image/png")
+      // Remove loading indicator
+      document.body.removeChild(loadingIndicator)
 
-      // Load the image
-      const img = new Image()
-      img.crossOrigin = "anonymous"
-      await new Promise((resolve) => {
-        img.onload = resolve
-        img.src = imageData
-      })
+      // Download the enhanced image
+      const link = document.createElement("a")
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+      link.download = `jersey-design-${timestamp}.png`
+      link.href = finalCanvas.toDataURL("image/png", 0.95)
+      
+      // Trigger download
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
 
-      // Draw the image to the final canvas
-      ctx.drawImage(img, i * 640, 0, 640, 640)
+      // Show success message
+      const successMsg = document.createElement('div')
+      successMsg.innerHTML = `
+        <div style="position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 15px 20px; border-radius: 5px; z-index: 10000; font-size: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+          ✓ Design downloaded successfully!
+        </div>
+      `
+      document.body.appendChild(successMsg)
+      setTimeout(() => {
+        if (successMsg.parentNode) {
+          document.body.removeChild(successMsg)
+        }
+      }, 3000)
+
+    } catch (error) {
+      console.error('Download failed:', error)
+      
+      // Remove loading indicator if it exists
+      const loadingIndicator = document.getElementById('download-loading')
+      if (loadingIndicator) {
+        document.body.removeChild(loadingIndicator)
+      }
+
+      // Show error message
+      const errorMsg = document.createElement('div')
+      errorMsg.innerHTML = `
+        <div style="position: fixed; top: 20px; right: 20px; background: #f44336; color: white; padding: 15px 20px; border-radius: 5px; z-index: 10000; font-size: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+          ✗ Download failed. Please try again.
+        </div>
+      `
+      document.body.appendChild(errorMsg)
+      setTimeout(() => {
+        if (errorMsg.parentNode) {
+          document.body.removeChild(errorMsg)
+        }
+      }, 5000)
+
+      // Restore states in case of error
+      if (camera && originalPosition) {
+        camera.position.copy(originalPosition)
+      }
+      if (jersey && originalRotation) {
+        jersey.rotation.copy(originalRotation)
+      }
+      if (controls) {
+        controls.enabled = true
+      }
     }
-
-    // Restore original camera position and controls
-    camera.position.copy(originalPosition)
-    if (jersey) jersey.rotation.copy(originalRotation)
-    controls.enabled = originalControlsEnabled
-
-    // Download the combined image
-    const link = document.createElement("a")
-    link.download = "jersey-design.png"
-    link.href = finalCanvas.toDataURL("image/png")
-    link.click()
   }
 
   // Event listeners for UI controls
@@ -1406,37 +1577,37 @@ const logoZSlider = document.getElementById("logo-z")
     }
   })
 
-  frontNumberZSlider.addEventListener("input", function () {
+  frontNumberZSlider?.addEventListener("input", function () {
     config.frontNumberPosition.z = Number.parseFloat(this.value)
     if (frontNumberMesh) {
       frontNumberMesh.position.z = config.frontNumberPosition.z
     }
   })
 
-  backNameZSlider.addEventListener("input", function () {
+  backNameZSlider?.addEventListener("input", function () {
     config.backNamePosition.z = Number.parseFloat(this.value)
     if (backNameMesh) {
       backNameMesh.position.z = config.backNamePosition.z
     }
   })
 
-  backNumberZSlider.addEventListener("input", function () {
+  backNumberZSlider?.addEventListener("input", function () {
     config.backNumberPosition.z = Number.parseFloat(this.value)
     if (backNumberMesh) {
       backNumberMesh.position.z = config.backNumberPosition.z
     }
   })
 
-  logoXSlider.addEventListener("input", function () {
+  logoXSlider?.addEventListener("input", function () {
     let newX = Number.parseFloat(this.value)
-    // Clamp x to slider min/max from HTML (0.25 to 0.75)
-    newX = Math.max(0.25, Math.min(0.75, newX))
-    config.logoPosition.x = newX - 0.5
+    // Clamp x to slider min/max from HTML (-0.3 to 0.3)
+    newX = Math.max(-0.3, Math.min(0.3, newX))
+    config.logoPosition.x = newX
     this.value = newX
     createTextElements(); // Recreate decal with new position
   })
 
-  logoYSlider.addEventListener("input", function () {
+  logoYSlider?.addEventListener("input", function () {
     let newY = Number.parseFloat(this.value)
     // Clamp y to slider min/max from HTML (0.2 to 0.8)
     newY = Math.max(0.2, Math.min(0.8, newY))
@@ -1445,7 +1616,7 @@ const logoZSlider = document.getElementById("logo-z")
     createTextElements(); // Recreate decal with new position
   })
 
-  logoZSlider.addEventListener("input", function () {
+  logoZSlider?.addEventListener("input", function () {
     let newZ = Number.parseFloat(this.value)
     // Clamp z to slider min/max from HTML (0.01 to 2.0)
     newZ = Math.max(0.01, Math.min(2.0, newZ))
@@ -1515,7 +1686,7 @@ const logoZSlider = document.getElementById("logo-z")
   })
 
   // AI Features Event Listeners
-  aiEnabledCheckbox.addEventListener("change", function() {
+  aiEnabledCheckbox?.addEventListener("change", function() {
     if (this.checked) {
       aiControls.style.display = "block"
     } else {
@@ -1523,14 +1694,14 @@ const logoZSlider = document.getElementById("logo-z")
     }
   })
 
-  generateAiDesignBtn.addEventListener("click", function() {
+  generateAiDesignBtn?.addEventListener("click", function() {
     const generationType = aiGenerationTypeSelect.value
     const creativityLevel = parseInt(aiCreativitySlider.value)
     generateAIDesign(generationType, creativityLevel)
   })
 
   // Selection Mode Event Listeners
-  selectionModeCheckbox.addEventListener("change", function() {
+  selectionModeCheckbox?.addEventListener("change", function() {
     selectionMode = this.checked
     if (selectionMode) {
       selectionInstructions.style.display = "block"
@@ -1983,7 +2154,327 @@ const logoZSlider = document.getElementById("logo-z")
   initializeProfessionalSchemes()
 })
 
-// Selection mode variables
+// Selection mode variables})
+
+// Add to Cart Modal Functionality
+document.addEventListener("DOMContentLoaded", () => {
+  const addToCartBtn = document.getElementById('add-to-cart-btn')
+  const addToCartModal = document.getElementById('add-to-cart-modal')
+  const closeModalBtn = document.getElementById('close-modal')
+  const addToCartForm = document.getElementById('add-to-cart-form')
+  const designSummary = document.getElementById('design-summary')
+
+  // Function to get current design configuration
+  function getCurrentDesignConfig() {
+    return {
+      jerseyType: document.getElementById('jersey-type')?.value || 'Not specified',
+      primaryColor: document.getElementById('primary-color')?.value || '#000000',
+      secondaryColor: document.getElementById('secondary-color')?.value || '#ffffff',
+      pattern: document.getElementById('pattern')?.value || 'solid',
+      frontNumber: document.getElementById('front-number')?.value || '',
+      backName: document.getElementById('back-name')?.value || '',
+      backNumber: document.getElementById('back-number')?.value || '',
+      textColor: document.getElementById('text-color')?.value || '#000000',
+      logoPlacement: document.getElementById('logo-placement')?.value || 'none'
+    }
+  }
+
+  // Function to update design summary
+  function updateDesignSummary() {
+    const config = getCurrentDesignConfig()
+    const summaryHTML = `
+      <div><strong>Jersey Type:</strong> ${config.jerseyType}</div>
+      <div><strong>Primary Color:</strong> <span style="display: inline-block; width: 20px; height: 20px; background-color: ${config.primaryColor}; border: 1px solid #ccc; margin-left: 5px; vertical-align: middle;"></span></div>
+      <div><strong>Secondary Color:</strong> <span style="display: inline-block; width: 20px; height: 20px; background-color: ${config.secondaryColor}; border: 1px solid #ccc; margin-left: 5px; vertical-align: middle;"></span></div>
+      <div><strong>Pattern:</strong> ${config.pattern}</div>
+      ${config.frontNumber ? `<div><strong>Front Number:</strong> ${config.frontNumber}</div>` : ''}
+      ${config.backName ? `<div><strong>Back Name:</strong> ${config.backName}</div>` : ''}
+      ${config.backNumber ? `<div><strong>Back Number:</strong> ${config.backNumber}</div>` : ''}
+      <div><strong>Text Color:</strong> <span style="display: inline-block; width: 20px; height: 20px; background-color: ${config.textColor}; border: 1px solid #ccc; margin-left: 5px; vertical-align: middle;"></span></div>
+      ${config.logoPlacement !== 'none' ? `<div><strong>Logo Placement:</strong> ${config.logoPlacement}</div>` : ''}
+    `
+    designSummary.innerHTML = summaryHTML
+  }
+
+  // Function to show modal
+  function showModal() {
+    updateDesignSummary()
+    addToCartModal.classList.remove('hidden')
+    document.body.style.overflow = 'hidden'
+  }
+
+  // Function to hide modal
+  function hideModal() {
+    addToCartModal.classList.add('hidden')
+    document.body.style.overflow = 'auto'
+    addToCartForm.reset()
+  }
+
+  // Function to capture design image for cart submission
+  async function captureDesignImage() {
+    try {
+      // Check if camera and renderer are initialized
+      if (!camera || !renderer || !scene) {
+        console.error('Three.js components not initialized')
+        return null
+      }
+
+      // Store original states
+      const originalPosition = camera.position.clone()
+      const originalRotation = jersey ? jersey.rotation.clone() : new THREE.Euler()
+      const originalControlsEnabled = controls.enabled
+      const originalRendererSize = { width: renderer.domElement.width, height: renderer.domElement.height }
+
+      // Disable controls during capture
+      controls.enabled = false
+      
+      // Set high-quality render size for better image quality
+      const renderWidth = 800
+      const renderHeight = 800
+      renderer.setSize(renderWidth, renderHeight, false)
+      camera.aspect = renderWidth / renderHeight
+      camera.updateProjectionMatrix()
+
+      // Position camera for front view (same as download)
+      camera.position.set(0, 0, 3)
+      camera.lookAt(0, 0, 0)
+
+      // Set jersey to front view
+      if (jersey) {
+        jersey.rotation.y = 0
+      }
+
+      // Update element visibility for front view
+      if (frontNumberMesh) {
+        frontNumberMesh.visible = true
+      }
+      if (backNameMesh) {
+        backNameMesh.visible = false
+      }
+      if (backNumberMesh) {
+        backNumberMesh.visible = false
+      }
+      if (logoMesh) {
+        logoMesh.visible = config.logoPlacement === "front"
+      }
+
+      // Force multiple renders for stability
+      for (let i = 0; i < 3; i++) {
+        renderer.render(scene, camera)
+      }
+
+      // Wait for rendering to complete
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Capture the image
+      const imageData = renderer.domElement.toDataURL("image/png", 1.0)
+
+      // Restore original renderer settings
+      renderer.setSize(originalRendererSize.width, originalRendererSize.height, false)
+      camera.aspect = originalRendererSize.width / originalRendererSize.height
+      camera.updateProjectionMatrix()
+
+      // Restore original states
+      camera.position.copy(originalPosition)
+      if (jersey) jersey.rotation.copy(originalRotation)
+      controls.enabled = originalControlsEnabled
+
+      // Restore element visibility
+      updateElementsVisibility()
+
+      // Final render to restore display
+      renderer.render(scene, camera)
+
+      return imageData
+    } catch (error) {
+      console.error('Error capturing design image:', error)
+      return null
+    }
+  }
+
+  // Function to handle cart submission
+  async function handleCartSubmission() {
+    const formData = new FormData(addToCartForm)
+    
+    // Show loading state
+    const submitBtn = addToCartForm.querySelector('button[type="submit"]')
+    const originalText = submitBtn.textContent
+    submitBtn.disabled = true
+    submitBtn.textContent = 'Capturing Design...'
+
+    // Capture the design image
+    const designImage = await captureDesignImage()
+    
+    submitBtn.textContent = 'Adding to Cart...'
+
+    const orderData = {
+      quantity: formData.get('quantity'),
+      size: formData.get('size'),
+      additionalInfo: formData.get('additional-info'),
+      designConfig: getCurrentDesignConfig(),
+      designImage: designImage, // Add the captured image
+      orderType: 'cart'
+    }
+
+    // Debug: Check CSRF token
+    // Get CSRF token from cookies
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Try to get CSRF token from DOM first, then from cookies
+    let csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken') || ''
+    
+    console.log('DEBUG: CSRF Token element:', document.querySelector('[name=csrfmiddlewaretoken]'))
+    console.log('DEBUG: CSRF Token found:', csrfToken ? 'Yes' : 'No')
+    console.log('DEBUG: CSRF Token value:', csrfToken)
+    console.log('DEBUG: Order data:', orderData)
+    
+    if (!csrfToken) {
+        console.error('CSRF token not found in DOM or cookies')
+        showNotification('CSRF token not found. Please refresh the page.', 'error')
+        return
+    }
+
+    // Send to backend
+    fetch('/api/add-custom-order/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify(orderData)
+    })
+    .then(response => {
+      console.log('DEBUG: Response status:', response.status)
+      console.log('DEBUG: Response headers:', response.headers)
+      
+      // Check if response is HTML (likely a login redirect)
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('text/html')) {
+        // User is not authenticated, redirect to login
+        console.log('DEBUG: HTML response detected, redirecting to login')
+        showNotification('Please log in to continue', 'error')
+        setTimeout(() => {
+          window.location.href = '/customerlogin'
+        }, 2000)
+        return null // Return null to prevent further processing
+      }
+      
+      // Check if response is ok
+      if (!response.ok) {
+        console.error(`HTTP error! status: ${response.status}`)
+        throw new Error(`Server error: ${response.status}`)
+      }
+      
+      return response.json()
+    })
+    .then(data => {
+      console.log('DEBUG: Response data:', data)
+      
+      if (!data) return // Handle case where we redirected to login
+      
+      // Check if we need to redirect to login
+      if (data.redirect) {
+        console.log('DEBUG: Redirecting to:', data.redirect)
+        window.location.href = data.redirect
+        return
+      }
+      
+      if (data.success) {
+        // Show success message briefly then redirect to cart
+        const successMsg = document.createElement('div')
+        successMsg.innerHTML = `
+          <div style="position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 15px 20px; border-radius: 5px; z-index: 10001; font-size: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+            ✓ Item added to cart successfully! Redirecting...
+          </div>
+        `
+        document.body.appendChild(successMsg)
+        
+        // Hide modal and redirect to cart after a brief delay
+        hideModal()
+        setTimeout(() => {
+          window.location.href = '/cart'
+        }, 1500)
+      } else {
+        throw new Error(data.message || 'Failed to add to cart')
+      }
+    })
+    .catch(error => {
+      console.error('Cart submission failed:', error)
+      
+      // Check if it's a JSON parsing error (likely authentication issue)
+      if (error.message.includes('Unexpected token') || error.message.includes('JSON')) {
+        console.log('DEBUG: JSON parsing error detected, likely authentication issue')
+        // Redirect to login page
+        window.location.href = '/customerlogin'
+        return
+      }
+      
+      // Show error message for other types of errors
+      const errorMsg = document.createElement('div')
+      errorMsg.innerHTML = `
+        <div style="position: fixed; top: 20px; right: 20px; background: #f44336; color: white; padding: 15px 20px; border-radius: 5px; z-index: 10001; font-size: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+          ✗ ${error.message || 'Failed to add to cart. Please try again.'}
+        </div>
+      `
+      document.body.appendChild(errorMsg)
+      setTimeout(() => {
+        if (errorMsg.parentNode) {
+          document.body.removeChild(errorMsg)
+        }
+      }, 5000)
+    })
+    .finally(() => {
+      // Restore button state
+      submitBtn.disabled = false
+      submitBtn.textContent = originalText
+    })
+  }
+
+  // Event listeners
+  if (addToCartBtn) {
+    addToCartBtn.addEventListener('click', showModal)
+  }
+
+  if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', hideModal)
+  }
+
+  if (addToCartModal) {
+    addToCartModal.addEventListener('click', (e) => {
+      if (e.target === addToCartModal) {
+        hideModal()
+      }
+    })
+  }
+
+  if (addToCartForm) {
+    addToCartForm.addEventListener('submit', (e) => {
+      e.preventDefault()
+      handleCartSubmission()
+    })
+  }
+
+  // Close modal with Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !addToCartModal.classList.contains('hidden')) {
+      hideModal()
+    }
+  })
+})
+
 let selectionMode = false
 let selectedElement = null
 let raycaster = new THREE.Raycaster()

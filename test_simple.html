@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Cart Submission</title>
+</head>
+<body>
+    <h1>Test Cart Submission</h1>
+    <button onclick="testSubmission()">Test Submit</button>
+    
+    <script>
+        function testSubmission() {
+            console.log('Testing cart submission...');
+            
+            const orderData = {
+                quantity: 1,
+                size: 'M',
+                additionalInfo: 'Test order',
+                designConfig: {},
+                designImage: 'test-image-data',
+                orderType: 'cart'
+            };
+            
+            console.log('Sending request to /api/add-custom-order/');
+            
+            fetch('/api/add-custom-order/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.text();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                alert('Response: ' + data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error: ' + error);
+            });
+        }
+    </script>
+</body>
+</html>

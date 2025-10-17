@@ -801,3 +801,30 @@ def admin_resolve_handover(request):
         return JsonResponse({'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_protect
+@require_http_methods(["POST"])
+def admin_clear_all_chats(request):
+    """Clear all chat requests/sessions"""
+    try:
+        # Check authentication for AJAX requests
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Authentication required'}, status=401)
+        
+        if not request.user.is_staff:
+            return JsonResponse({'error': 'Unauthorized'}, status=403)
+        
+        # Delete all chat sessions and their associated messages
+        # This will cascade delete all related ChatMessage objects
+        deleted_count = ChatSession.objects.all().count()
+        ChatSession.objects.all().delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully cleared {deleted_count} chat sessions',
+            'cleared_count': deleted_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

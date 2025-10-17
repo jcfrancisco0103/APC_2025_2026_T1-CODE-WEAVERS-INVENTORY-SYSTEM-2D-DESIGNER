@@ -1,0 +1,246 @@
+{% extends 'ecom/customer_base.html' %}
+{% load static %}
+
+{% block title %}My Pre-Orders{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-shopping-cart mr-2"></i>
+                        My Pre-Orders
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if total_pre_orders > 0 %}
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="info-box bg-info">
+                                    <span class="info-box-icon"><i class="fas fa-shopping-cart"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Total Pre-Orders</span>
+                                        <span class="info-box-number">{{ total_pre_orders }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Design Preview</th>
+                                        <th>Jersey Details</th>
+                                        <th>Quantity</th>
+                                        <th>Size</th>
+                                        <th>Price</th>
+                                        <th>Status</th>
+                                        <th>Date Ordered</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pre_order in pre_orders_data %}
+                                    <tr>
+                                        <td>{{ pre_order.order.id }}</td>
+                                        <td>
+                                            {% if pre_order.design.design_image %}
+                                                <img src="{{ pre_order.design.design_image.url }}" 
+                                                     alt="Design Preview" 
+                                                     class="img-thumbnail" 
+                                                     style="width: 60px; height: 60px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="bg-light d-flex align-items-center justify-content-center" 
+                                                     style="width: 60px; height: 60px;">
+                                                    <i class="fas fa-image text-muted"></i>
+                                                </div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>
+                                                <strong>Type:</strong> {{ pre_order.design_summary.jersey_type }}<br>
+                                                <strong>Colors:</strong> {{ pre_order.design_summary.primary_color }} / {{ pre_order.design_summary.secondary_color }}<br>
+                                                {% if pre_order.design_summary.back_name %}
+                                                    <strong>Name:</strong> {{ pre_order.design_summary.back_name }}<br>
+                                                {% endif %}
+                                                {% if pre_order.design_summary.back_number %}
+                                                    <strong>Number:</strong> {{ pre_order.design_summary.back_number }}
+                                                {% endif %}
+                                            </small>
+                                        </td>
+                                        <td>{{ pre_order.item.quantity }}</td>
+                                        <td>{{ pre_order.item.size }}</td>
+                                        <td>₱{{ pre_order.total_price|floatformat:2 }}</td>
+                                        <td>
+                                            {% if pre_order.item.pre_order_status == 'pending' %}
+                                                <span class="badge badge-warning">Pending</span>
+                                            {% elif pre_order.item.pre_order_status == 'confirmed' %}
+                                                <span class="badge badge-info">Confirmed</span>
+                                            {% elif pre_order.item.pre_order_status == 'in_production' %}
+                                                <span class="badge badge-primary">In Production</span>
+                                            {% elif pre_order.item.pre_order_status == 'completed' %}
+                                                <span class="badge badge-success">Completed</span>
+                                            {% elif pre_order.item.pre_order_status == 'cancelled' %}
+                                                <span class="badge badge-danger">Cancelled</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">Unknown</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ pre_order.item.created_at|date:"M d, Y" }}</td>
+                                        <td>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-info" 
+                                                    data-toggle="modal" 
+                                                    data-target="#preOrderModal{{ pre_order.item.id }}">
+                                                <i class="fas fa-eye"></i> View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No Pre-Orders Found</h4>
+                            <p class="text-muted">You haven't made any pre-orders yet.</p>
+                            <a href="{% url 'customizer' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create Custom Jersey
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pre-Order Detail Modals -->
+{% for pre_order in pre_orders_data %}
+<div class="modal fade" id="preOrderModal{{ pre_order.item.id }}" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Pre-Order Details - #{{ pre_order.order.id }}</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><strong>Design Preview</strong></h6>
+                        {% if pre_order.design.design_image %}
+                            <img src="{{ pre_order.design.design_image.url }}" 
+                                 alt="Design Preview" 
+                                 class="img-fluid border rounded mb-3">
+                        {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center border rounded mb-3" 
+                                 style="height: 200px;">
+                                <i class="fas fa-image fa-3x text-muted"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6><strong>Order Information</strong></h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Order ID:</strong></td>
+                                <td>{{ pre_order.order.id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    {% if pre_order.item.pre_order_status == 'pending' %}
+                                        <span class="badge badge-warning">Pending</span>
+                                    {% elif pre_order.item.pre_order_status == 'confirmed' %}
+                                        <span class="badge badge-info">Confirmed</span>
+                                    {% elif pre_order.item.pre_order_status == 'in_production' %}
+                                        <span class="badge badge-primary">In Production</span>
+                                    {% elif pre_order.item.pre_order_status == 'completed' %}
+                                        <span class="badge badge-success">Completed</span>
+                                    {% elif pre_order.item.pre_order_status == 'cancelled' %}
+                                        <span class="badge badge-danger">Cancelled</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary">Unknown</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quantity:</strong></td>
+                                <td>{{ pre_order.item.quantity }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Size:</strong></td>
+                                <td>{{ pre_order.item.size }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Price:</strong></td>
+                                <td>₱{{ pre_order.total_price|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Date Ordered:</strong></td>
+                                <td>{{ pre_order.item.created_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                        </table>
+
+                        <h6><strong>Design Details</strong></h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Jersey Type:</strong></td>
+                                <td>{{ pre_order.design_summary.jersey_type }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Primary Color:</strong></td>
+                                <td>{{ pre_order.design_summary.primary_color }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Secondary Color:</strong></td>
+                                <td>{{ pre_order.design_summary.secondary_color }}</td>
+                            </tr>
+                            {% if pre_order.design_summary.pattern %}
+                            <tr>
+                                <td><strong>Pattern:</strong></td>
+                                <td>{{ pre_order.design_summary.pattern }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if pre_order.design_summary.back_name %}
+                            <tr>
+                                <td><strong>Back Name:</strong></td>
+                                <td>{{ pre_order.design_summary.back_name }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if pre_order.design_summary.back_number %}
+                            <tr>
+                                <td><strong>Back Number:</strong></td>
+                                <td>{{ pre_order.design_summary.back_number }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if pre_order.design_summary.text_color %}
+                            <tr>
+                                <td><strong>Text Color:</strong></td>
+                                <td>{{ pre_order.design_summary.text_color }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+
+                        {% if pre_order.item.additional_info %}
+                        <h6><strong>Additional Information</strong></h6>
+                        <p class="text-muted">{{ pre_order.item.additional_info }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

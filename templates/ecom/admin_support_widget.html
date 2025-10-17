@@ -40,6 +40,9 @@
             <button class="refresh-btn" onclick="refreshSupportRequests()">
                 <i class="fa fa-refresh"></i> Refresh
             </button>
+            <button class="clear-all-btn" onclick="clearAllChatRequests()">
+                <i class="fa fa-trash"></i> Clear All
+            </button>
         </div>
     </div>
 </div>
@@ -303,9 +306,10 @@
     border-top: 1px solid #e0e0e0;
     display: flex;
     justify-content: center;
+    gap: 10px;
 }
 
-.refresh-btn {
+.refresh-btn, .clear-all-btn {
     background: #f3f4f6;
     border: 1px solid #d1d5db;
     color: #374151;
@@ -322,6 +326,17 @@
 .refresh-btn:hover {
     background: #e5e7eb;
     border-color: #9ca3af;
+}
+
+.clear-all-btn {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+.clear-all-btn:hover {
+    background: #fee2e2;
+    border-color: #f87171;
 }
 
 /* Chat Modal Styles */
@@ -830,6 +845,33 @@
         .catch(error => {
             console.error('Error resolving handover:', error);
             alert('Error resolving handover');
+        });
+    }
+    
+    window.clearAllChatRequests = function() {
+        if (!confirm('Are you sure you want to clear all chat requests? This action cannot be undone.')) {
+            return;
+        }
+        
+        fetch('/api/admin/clear-all-chats/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                refreshSupportRequests();
+                alert('All chat requests have been cleared successfully.');
+            } else {
+                alert('Error clearing chat requests: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error clearing chat requests:', error);
+            alert('Error clearing chat requests');
         });
     }
     

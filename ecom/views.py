@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.conf import settings
 from django.utils import timezone
-from .models import Customer, SavedAddress
+from .models import Customer, SavedAddress, CustomJerseyDesign, CustomOrderItem
 from django.urls import reverse
 from .forms import InventoryForm
 from .forms import CustomerLoginForm
@@ -365,6 +365,24 @@ def customer_login(request):
 def is_customer(user):
     return user.groups.filter(name='CUSTOMER').exists()
 
+def customer_required(view_func):
+    """
+    Decorator that ensures only authenticated customer users can access a view.
+    If user is not a customer, redirects to customer login.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, 'Please log in to access this page.')
+            return redirect('customerlogin')
+        
+        if not is_customer(request.user):
+            messages.error(request, 'Access denied. Customer account required.')
+            return redirect('customerlogin')
+        
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
 #-----------for checking user is admin
 def is_admin(user):
     """
@@ -558,6 +576,48 @@ def admin_dashboard_view(request):
         month_index = entry['month'] - 1
         monthly_sales[month_index] = float(entry['total']) if entry['total'] else 0
 
+    # Calculate dashboard stats for different time periods
+    today_start = current_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = current_date - timedelta(days=7)
+    month_start = current_date - timedelta(days=30)
+    
+    # Calculate transactions for different periods
+    today_orders = models.OrderItem.objects.filter(
+        order__status='Delivered',
+        order__created_at__gte=today_start
+    )
+    today_transactions = sum(item.price * item.quantity for item in today_orders)
+    
+    week_orders = models.OrderItem.objects.filter(
+        order__status='Delivered',
+        order__created_at__gte=week_start
+    )
+    week_transactions = sum(item.price * item.quantity for item in week_orders)
+    
+    month_orders = models.OrderItem.objects.filter(
+        order__status='Delivered',
+        order__created_at__gte=month_start
+    )
+    month_transactions = sum(item.price * item.quantity for item in month_orders)
+    
+    # Calculate user stats
+    today_users = models.Customer.objects.filter(user__date_joined__gte=today_start).count()
+    week_users = models.Customer.objects.filter(user__date_joined__gte=week_start).count()
+    month_users = models.Customer.objects.filter(user__date_joined__gte=month_start).count()
+    total_users = customercount
+    non_users = 0  # Placeholder for non-users count
+    
+    dashboard_stats = {
+        'new_users_today': today_users,
+        'new_users_week': week_users,
+        'new_users_month': month_users,
+        'total_users': total_users,
+        'transactions_today': '{:,.2f}'.format(today_transactions),
+        'transactions_week': '{:,.2f}'.format(week_transactions),
+        'transactions_month': '{:,.2f}'.format(month_transactions),
+        'non_users': non_users,
+    }
+
     mydict = {
         'customercount': customercount,
         'productcount': productcount,
@@ -571,6 +631,7 @@ def admin_dashboard_view(request):
         'current_date': current_date.strftime('%Y-%m-%d'),
         'monthly_sales': monthly_sales,
         'users': users,
+        'dashboard_stats': dashboard_stats,
     }
     return render(request, 'ecom/admin_dashboard.html', context=mydict)
 
@@ -876,6 +937,8 @@ def prepare_admin_order_view(request, orders, status, template, extra_context=No
     
     for order in orders:
         total_price = 0
+        
+        # Get regular order items
         order_items = models.OrderItem.objects.filter(order=order)
         items = []
         for item in order_items:
@@ -888,6 +951,20 @@ def prepare_admin_order_view(request, orders, status, template, extra_context=No
             })
             total_price += item.price * item.quantity
         
+        # Get custom order items
+        custom_order_items = models.CustomOrderItem.objects.filter(order=order)
+        custom_items = []
+        for item in custom_order_items:
+            custom_items.append({
+                'custom_item': item,
+                'quantity': item.quantity,
+                'size': item.size,
+                'price': item.price,
+                'design': item.custom_design,
+                'image_url': None,  # CustomJerseyDesign doesn't have image_url attribute
+            })
+            total_price += item.price * item.quantity
+        
         # Use order.address if available, else fallback to customer's full address
         shipping_address = order.address if order.address else (order.customer.get_full_address if order.customer else '')
         orders_data.append({
@@ -895,6 +972,7 @@ def prepare_admin_order_view(request, orders, status, template, extra_context=No
             'customer': order.customer,
             'shipping_address': shipping_address,
             'order_items': items,
+            'custom_order_items': custom_items,
             'status': order.status,
             'order_id': order.order_ref,
             'order_date': order.order_date,
@@ -1108,18 +1186,29 @@ def view_feedback_view(request):
 #---------------------------------------------------------------------------------
 @login_required(login_url='customerlogin')
 def pending_orders_view(request):
+    print(f"DEBUG: pending_orders_view called by user: {request.user.username}")
+    
     try:
         vat_rate = 12
         customer = models.Customer.objects.get(user=request.user)
+        print(f"DEBUG: Customer found: {customer.user.username}")
     except models.Customer.DoesNotExist:
+        print("DEBUG: Customer profile not found")
         messages.error(request, 'Customer profile not found. Please contact support.')
         return redirect('customer-home')
 
     orders = models.Orders.objects.filter(customer=customer, status='Pending').order_by('-order_date', '-created_at')
+    print(f"DEBUG: Found {orders.count()} pending orders")
+    
     orders_with_items = []
 
     for order in orders:
+        print(f"DEBUG: Processing order ID: {order.id}")
+        
+        # Get regular order items
         order_items = models.OrderItem.objects.filter(order=order)
+        print(f"DEBUG: Found {order_items.count()} regular order items")
+        
         products = []
         total = Decimal('0.00')
         for item in order_items:
@@ -1133,16 +1222,38 @@ def pending_orders_view(request):
                 'line_total': line_total,
             })
 
+        # Get custom order items
+        custom_order_items = models.CustomOrderItem.objects.filter(order=order)
+        print(f"DEBUG: Found {custom_order_items.count()} custom order items")
+        
+        custom_items = []
+        for item in custom_order_items:
+            print(f"DEBUG: Custom item - ID: {item.id}, Price: {item.price}, Quantity: {item.quantity}, Size: {item.size}")
+            # Use VAT-inclusive calculation (same as cart)
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            custom_items.append({
+                'item': item,  # Changed from 'custom_item' to 'item' to match template
+                'size': item.size,
+                'quantity': item.quantity,
+                'unit_price': item.price,  # Changed from 'price' to 'unit_price' to match template
+                'line_total': line_total,
+            })
+
+        print(f"DEBUG: Order total: {total}")
+        
         # Calculate VAT using same method as cart (VAT-inclusive)
         vat_amount = total * Decimal(12) / Decimal(112)
         net_subtotal = total - vat_amount
-        # Use stored delivery fee from order
-        delivery_fee = order.delivery_fee
-        grand_total = total + Decimal(delivery_fee)
+        # Use stored delivery fee from order, default to 50 if not set
+        delivery_fee = order.delivery_fee if order.delivery_fee else Decimal('50.00')
+        grand_total = total + delivery_fee
 
         orders_with_items.append({
             'order': order,
             'products': products,
+            'custom_items': custom_items,
+            'subtotal': total,  # Added subtotal field for template
             'total': total,
             'net_subtotal': net_subtotal,
             'vat_amount': vat_amount,
@@ -1150,6 +1261,7 @@ def pending_orders_view(request):
             'grand_total': grand_total,
         })
 
+    print(f"DEBUG: Returning {len(orders_with_items)} orders with items")
     return render(request, 'ecom/order_status_page.html', {
         'orders_with_items': orders_with_items,
         'status': 'Pending',
@@ -1170,6 +1282,7 @@ def to_ship_orders_view(request):
     ).order_by('-order_date')
     orders_with_items = []
     for order in orders:
+        # Get regular order items
         order_items = models.OrderItem.objects.filter(order=order)
         products = []
         total = Decimal('0.00')
@@ -1183,6 +1296,21 @@ def to_ship_orders_view(request):
                 'quantity': item.quantity,
                 'line_total': line_total,
             })
+
+        # Get custom order items
+        custom_order_items = models.CustomOrderItem.objects.filter(order=order)
+        custom_items = []
+        for item in custom_order_items:
+            # Use VAT-inclusive calculation (same as cart)
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            custom_items.append({
+                'custom_item': item,
+                'size': item.size,
+                'quantity': item.quantity,
+                'price': item.price,
+                'line_total': line_total,
+            })
         
         # Calculate VAT using same method as cart (VAT-inclusive)
         vat_amount = total * Decimal(12) / Decimal(112)
@@ -1194,6 +1322,7 @@ def to_ship_orders_view(request):
         orders_with_items.append({
             'order': order,
             'products': products,
+            'custom_items': custom_items,
             'total': total,
             'net_subtotal': net_subtotal,
             'vat_amount': vat_amount,
@@ -1213,6 +1342,7 @@ def to_receive_orders_view(request):
     orders = models.Orders.objects.filter(customer=customer, status='Out for Delivery').order_by('-order_date')
     orders_with_items = []
     for order in orders:
+        # Get regular order items
         order_items = models.OrderItem.objects.filter(order=order)
         products = []
         total = Decimal('0.00')
@@ -1226,6 +1356,21 @@ def to_receive_orders_view(request):
                 'quantity': item.quantity,
                 'line_total': line_total,
             })
+
+        # Get custom order items
+        custom_order_items = models.CustomOrderItem.objects.filter(order=order)
+        custom_items = []
+        for item in custom_order_items:
+            # Use VAT-inclusive calculation (same as cart)
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            custom_items.append({
+                'custom_item': item,
+                'size': item.size,
+                'quantity': item.quantity,
+                'price': item.price,
+                'line_total': line_total,
+            })
         
         # Calculate VAT using same method as cart (VAT-inclusive)
         vat_amount = total * Decimal(12) / Decimal(112)
@@ -1237,6 +1382,7 @@ def to_receive_orders_view(request):
         orders_with_items.append({
             'order': order,
             'products': products,
+            'custom_items': custom_items,
             'total': total,
             'net_subtotal': net_subtotal,
             'vat_amount': vat_amount,
@@ -1256,6 +1402,7 @@ def delivered_orders_view(request):
     orders = models.Orders.objects.filter(customer=customer, status='Delivered').order_by('-order_date')
     orders_with_items = []
     for order in orders:
+        # Get regular order items
         order_items = models.OrderItem.objects.filter(order=order)
         products = []
         total = Decimal('0.00')
@@ -1269,6 +1416,21 @@ def delivered_orders_view(request):
                 'quantity': item.quantity,
                 'line_total': line_total,
             })
+
+        # Get custom order items
+        custom_order_items = models.CustomOrderItem.objects.filter(order=order)
+        custom_items = []
+        for item in custom_order_items:
+            # Use VAT-inclusive calculation (same as cart)
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            custom_items.append({
+                'custom_item': item,
+                'size': item.size,
+                'quantity': item.quantity,
+                'price': item.price,
+                'line_total': line_total,
+            })
         
         # Calculate VAT using same method as cart (VAT-inclusive)
         vat_amount = total * Decimal(12) / Decimal(112)
@@ -1280,6 +1442,7 @@ def delivered_orders_view(request):
         orders_with_items.append({
             'order': order,
             'products': products,
+            'custom_items': custom_items,
             'total': total,
             'net_subtotal': net_subtotal,
             'vat_amount': vat_amount,
@@ -1299,6 +1462,7 @@ def cancelled_orders_view(request):
     orders = models.Orders.objects.filter(customer=customer, status='Cancelled').order_by('-status_updated_at')
     orders_with_items = []
     for order in orders:
+        # Get regular order items
         order_items = models.OrderItem.objects.filter(order=order)
         products = []
         total = Decimal('0.00')
@@ -1312,6 +1476,21 @@ def cancelled_orders_view(request):
                 'quantity': item.quantity,
                 'line_total': line_total,
             })
+
+        # Get custom order items
+        custom_order_items = models.CustomOrderItem.objects.filter(order=order)
+        custom_items = []
+        for item in custom_order_items:
+            # Use VAT-inclusive calculation (same as cart)
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            custom_items.append({
+                'custom_item': item,
+                'size': item.size,
+                'quantity': item.quantity,
+                'price': item.price,
+                'line_total': line_total,
+            })
         
         # Calculate VAT using same method as cart (VAT-inclusive)
         vat_amount = total * Decimal(12) / Decimal(112)
@@ -1323,6 +1502,7 @@ def cancelled_orders_view(request):
         orders_with_items.append({
             'order': order,
             'products': products,
+            'custom_items': custom_items,
             'total': total,
             'net_subtotal': net_subtotal,
             'vat_amount': vat_amount,
@@ -1410,9 +1590,13 @@ def add_to_cart_view(request, pk):
     # For cart counter, fetching products ids added by customer from cookies
     if 'product_ids' in request.COOKIES:
         product_ids = request.COOKIES['product_ids']
-        product_keys = product_ids.split('|')
+        if product_ids:  # Check if product_ids is not empty
+            product_keys = product_ids.split('|')
+        else:
+            product_keys = []
         product_count_in_cart = len(set(product_keys))
     else:
+        product_keys = []
         product_count_in_cart = 0
     
     # Get next_page from POST or GET with a fallback to home page
@@ -1439,7 +1623,10 @@ def add_to_cart_view(request, pk):
     product_key = f'product_{pk}_{size}'
     if 'product_ids' in request.COOKIES:
         product_ids = request.COOKIES['product_ids']
-        product_keys = product_ids.split('|')
+        if product_ids:  # Check if product_ids is not empty
+            product_keys = product_ids.split('|')
+        else:
+            product_keys = []
         if product_key not in product_keys:
             product_keys.append(product_key)
         updated_product_ids = '|'.join(product_keys)
@@ -1457,12 +1644,17 @@ def cart_view(request):
     # For cart counter
     if 'product_ids' in request.COOKIES:
         product_ids = request.COOKIES['product_ids']
-        product_keys = product_ids.split('|')
+        if product_ids:  # Check if product_ids is not empty
+            product_keys = product_ids.split('|')
+        else:
+            product_keys = []
         product_count_in_cart = len(set(product_keys))
     else:
+        product_keys = []
         product_count_in_cart = 0
 
     products = []
+    custom_items = []
     total = 0
     delivery_fee = 0
     region = None
@@ -1480,9 +1672,14 @@ def cart_view(request):
     # ...existing code for products, VAT, etc...
     vat_rate = 12
     vat_multiplier = 1 + (vat_rate / 100)
+    
+    # Get regular products from cookies
     if 'product_ids' in request.COOKIES:
         product_ids = request.COOKIES['product_ids']
-        product_keys = product_ids.split('|')
+        if product_ids:  # Check if product_ids is not empty
+            product_keys = product_ids.split('|')
+        else:
+            product_keys = []
         product_ids_only = set()
         for key in product_keys:
             parts = key.split('_')
@@ -1512,9 +1709,36 @@ def cart_view(request):
                                 'size': size,
                                 'quantity': quantity
                             })
+    
+    # Get custom jersey items from pending orders
+    if request.user.is_authenticated and customer:
+        # Get all pending cart orders for this customer
+        cart_orders = models.Orders.objects.filter(
+            customer=customer,
+            status='Pending'
+        )
+        # Get custom order items from all pending orders
+        for cart_order in cart_orders:
+            custom_order_items = models.CustomOrderItem.objects.filter(
+                order=cart_order,
+                is_pre_order=False
+            )
+            for item in custom_order_items:
+                item_total = item.price * item.quantity
+                total += item_total
+                custom_items.append({
+                    'custom_item': item,
+                    'size': item.size,
+                    'quantity': item.quantity,
+                    'price': item.price,
+                    'total': item_total
+                })
+    
     # Use VAT-inclusive calculation like orders
     vat_amount = total * 12 / 112
     net_subtotal = total - vat_amount
+    # Convert delivery_fee to Decimal to avoid TypeError with Decimal + float
+    delivery_fee = Decimal(str(delivery_fee))
     grand_total = total + delivery_fee
     
     # Get saved addresses for the current user
@@ -1524,6 +1748,7 @@ def cart_view(request):
     
     response = render(request, 'ecom/cart.html', {
         'products': products,
+        'custom_items': custom_items,
         'total': total,
         'delivery_fee': delivery_fee,
         'vat_rate': vat_rate,
@@ -1544,9 +1769,13 @@ def remove_from_cart_view(request, pk):
     # For counter in cart
     if 'product_ids' in request.COOKIES:
         product_ids = request.COOKIES['product_ids']
-        product_keys = product_ids.split('|')
+        if product_ids:  # Check if product_ids is not empty
+            product_keys = product_ids.split('|')
+        else:
+            product_keys = []
         product_count_in_cart = len(set(product_keys))
     else:
+        product_keys = []
         product_count_in_cart = 0
 
     # Remove only the specific product with the matching size
@@ -1964,30 +2193,138 @@ def place_order(request):
     print('Place Order view function executed')
     if request.method == 'POST':
         print('POST request received')
-        customer = models.Customer.objects.get(user_id=request.user.id)
+        try:
+            customer = models.Customer.objects.get(user_id=request.user.id)
+        except models.Customer.DoesNotExist:
+            return JsonResponse({'message': 'Customer profile not found'}, status=400)
         
-        # Get address from cookies if available, otherwise use customer's profile address
+        # Process regular products from cookies
+        products = []
+        product_keys = []
+        if 'product_ids' in request.COOKIES:
+            product_ids = request.COOKIES['product_ids']
+            if product_ids != "":
+                product_keys = request.COOKIES['product_ids'].split('|')
+                product_ids_only = set()
+                for key in product_keys:
+                    parts = key.split('_')
+                    if len(parts) >= 3:
+                        product_id = parts[1]
+                        product_ids_only.add(product_id)
+                products = list(models.Product.objects.filter(id__in=product_ids_only))
+        
+        # Get custom items from pending cart order
+        custom_items = []
+        try:
+            cart_order = models.Orders.objects.get(
+                customer=customer,
+                status='Pending'
+            )
+            custom_order_items = models.CustomOrderItem.objects.filter(
+                order=cart_order,
+                is_pre_order=False
+            )
+            custom_items = list(custom_order_items)
+        except models.Orders.DoesNotExist:
+            pass
+        
+        # Check if cart is empty
+        if not products and not custom_items:
+            return JsonResponse({'message': 'Cart is empty'}, status=400)
+        
+        # Get address and contact info
         address = request.COOKIES.get('address', customer.get_full_address)
         mobile = request.COOKIES.get('mobile', customer.mobile)
+        email = request.COOKIES.get('email', customer.user.email)
         
-        # Create the order with the appropriate address
-        order = Orders.objects.create(
+        # Generate order reference
+        import random
+        import string
+        def generate_order_ref(length=12):
+            return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+        
+        order_ref = generate_order_ref()
+        
+        # Calculate delivery fee
+        region = customer.region if hasattr(customer, 'region') else None
+        origin_region = "NCR"
+        destination_region = region if region else "NCR"
+        delivery_fee = get_shipping_fee(origin_region, destination_region, weight_kg=0.5)
+        
+        # Create the main order
+        order = models.Orders.objects.create(
             customer=customer,
-            email=request.user.email,
+            email=email,
             address=address,
             mobile=mobile,
             status='Pending',
-            order_date=timezone.now()
+            order_date=timezone.now(),
+            status_updated_at=timezone.now(),
+            order_ref=order_ref,
+            delivery_fee=delivery_fee,
+            notes=f"Order Group ID: {order_ref}"
         )
         
-        design_data = request.POST.get('design_data')
-        if design_data:
-            # Handle custom design data if present
-            print('Design data:', design_data)
-            # Add custom design processing logic here
+        # Process regular products and create order items
+        for product in products:
+            quantity = 1  # Default quantity
+            size = 'M'  # Default size
             
-        print('Order created:', order)
-        return JsonResponse({'message': 'Order placed successfully'})
+            # Get product details from cookies
+            for key in product_keys:
+                if key.startswith(f'product_{product.id}_'):
+                    cookie_key = f'{key}_details'
+                    if cookie_key in request.COOKIES:
+                        details = request.COOKIES[cookie_key].split(':')
+                        if len(details) == 2:
+                            size = details[0]
+                            quantity = int(details[1])
+            
+            # Create order item
+            models.OrderItem.objects.create(
+                order=order,
+                product=product,
+                quantity=quantity,
+                price=product.price,
+                size=size
+            )
+            
+            # Update product inventory
+            product.quantity = max(0, product.quantity - quantity)
+            product.save()
+            
+            # Update inventory item
+            try:
+                inventory_item = models.InventoryItem.objects.get(name=product.name)
+                if inventory_item.quantity >= quantity:
+                    inventory_item.quantity = max(0, inventory_item.quantity - quantity)
+                    inventory_item.save()
+            except models.InventoryItem.DoesNotExist:
+                pass
+        
+        # Process custom items - update their order reference to the new order
+        for custom_item in custom_items:
+            custom_item.order = order
+            custom_item.save()
+        
+        # Delete the old pending cart order if it exists and is now empty
+        if custom_items:
+            try:
+                # Check if the old cart order has any remaining items
+                remaining_custom_items = models.CustomOrderItem.objects.filter(order=cart_order).count()
+                remaining_order_items = models.OrderItem.objects.filter(order=cart_order).count()
+                
+                if remaining_custom_items == 0 and remaining_order_items == 0:
+                    cart_order.delete()
+            except:
+                pass
+        
+        print(f'Order created: {order.order_ref} with {len(products)} products and {len(custom_items)} custom items')
+        return JsonResponse({
+            'message': 'Order placed successfully',
+            'order_id': order.id,
+            'order_ref': order.order_ref
+        })
     else:
         print('Invalid request method')
         return JsonResponse({'message': 'Invalid request method'}, status=400)
@@ -2118,10 +2455,6 @@ def download_invoice_view(request, order_id):
     html = render_to_string('ecom/download_invoice.html', context)
     # ...PDF generation logic or return HttpResponse(html)...
     return HttpResponse(html)
-
-def pre_order(request):
-    return render(request, 'ecom/pre_order.html')
-
 
 @login_required(login_url='customerlogin')
 @user_passes_test(is_customer)
@@ -3299,3 +3632,508 @@ def admin_transactions_view(request):
     }
 
     return render(request, 'ecom/admin_transactions.html', context)
+
+
+from django.views.decorators.csrf import csrf_protect
+
+@csrf_protect
+def add_custom_order(request):
+    """
+    API endpoint to handle custom jersey design orders (pre-order or add to cart)
+    """
+    print("=" * 50)
+    print("DEBUG: add_custom_order FUNCTION REACHED!")
+    print(f"DEBUG: add_custom_order called by user: {request.user.username if request.user.is_authenticated else 'Anonymous'}")
+    print(f"DEBUG: User authenticated: {request.user.is_authenticated}")
+    print(f"DEBUG: User is customer: {is_customer(request.user) if request.user.is_authenticated else 'N/A'}")
+    print(f"DEBUG: Request method: {request.method}")
+    print(f"DEBUG: Request headers: {dict(request.headers)}")
+    print("=" * 50)
+    
+    # Check authentication first
+    if not request.user.is_authenticated:
+        print("DEBUG: User not authenticated, returning login redirect")
+        return JsonResponse({'success': False, 'message': 'Please log in to continue', 'redirect': '/customerlogin'})
+    
+    # Check if user is customer
+    if not is_customer(request.user):
+        print("DEBUG: User is not a customer")
+        return JsonResponse({'success': False, 'message': 'Customer account required', 'redirect': '/customerlogin'})
+    
+    if request.method != 'POST':
+        print("DEBUG: Non-POST request received")
+        return JsonResponse({'success': False, 'message': 'Only POST method allowed'})
+    
+    try:
+        # Parse JSON data
+        data = json.loads(request.body)
+        print(f"DEBUG: Received data: {data}")
+        
+        # Get customer
+        customer = get_object_or_404(Customer, user=request.user)
+        print(f"DEBUG: Customer found: {customer.user.username}")
+        
+        # Extract order data
+        quantity = int(data.get('quantity', 1))
+        size = data.get('size', '')
+        additional_info = data.get('additionalInfo', '')
+        design_config = data.get('designConfig', {})
+        order_type = data.get('orderType', 'pre-order')  # 'pre-order' or 'cart'
+        
+        # Validate required fields
+        if not size or size not in [choice[0] for choice in Product.SIZE_CHOICES]:
+            return JsonResponse({'success': False, 'message': 'Valid size is required'})
+        
+        if quantity < 1 or quantity > 99:
+            return JsonResponse({'success': False, 'message': 'Quantity must be between 1 and 99'})
+        
+        # Create custom jersey design
+        custom_design = CustomJerseyDesign.objects.create(
+            customer=customer,
+            jersey_type=design_config.get('jerseyType', 'standard'),
+            primary_color=design_config.get('primaryColor', '#000000'),
+            secondary_color=design_config.get('secondaryColor', '#ffffff'),
+            pattern=design_config.get('pattern', 'solid'),
+            front_number=design_config.get('frontNumber', ''),
+            back_name=design_config.get('backName', ''),
+            back_number=design_config.get('backNumber', ''),
+            text_color=design_config.get('textColor', '#000000'),
+            logo_placement=design_config.get('logoPlacement', 'none'),
+            design_data=design_config
+        )
+        
+        # Save design image if provided
+        if 'designImage' in data and data['designImage']:
+            try:
+                # Parse base64 image data
+                format, imgstr = data['designImage'].split(';base64,')
+                ext = format.split('/')[-1]
+                
+                # Create a unique filename
+                import uuid
+                filename = f'custom_design_{customer.id}_{uuid.uuid4().hex[:8]}.{ext}'
+                
+                # Decode and save the image
+                from django.core.files.base import ContentFile
+                import base64
+                image_data = ContentFile(base64.b64decode(imgstr), name=filename)
+                custom_design.design_image = image_data
+                custom_design.save()
+                print(f"DEBUG: Design image saved as {filename}")
+            except Exception as e:
+                print(f"DEBUG: Error saving design image: {e}")
+                # Continue without image if there's an error
+        
+        # Set base price for custom jersey (you can adjust this)
+        base_price = decimal.Decimal('599.00')  # Base price for custom jersey
+        
+        if order_type == 'pre-order':
+            print("DEBUG: Creating pre-order")
+            # Create a new order for pre-order
+            order = Orders.objects.create(
+                customer=customer,
+                email=customer.user.email,
+                address=customer.get_full_address,
+                mobile=customer.mobile,
+                status='Pending',
+                payment_method='cod'
+            )
+            print(f"DEBUG: Pre-order created with ID: {order.id}")
+            
+            # Create custom order item
+            custom_item = CustomOrderItem.objects.create(
+                order=order,
+                custom_design=custom_design,
+                quantity=quantity,
+                size=size,
+                price=base_price,
+                additional_info=additional_info,
+                is_pre_order=True
+            )
+            print(f"DEBUG: Custom order item created with ID: {custom_item.id}")
+            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Pre-order created successfully!',
+                'order_id': order.id,
+                'order_ref': order.order_ref
+            })
+            
+        else:  # Add to cart
+            print("DEBUG: Adding to cart")
+            # For cart functionality, we'll create a pending order that can be processed later
+            # Check if customer has an existing pending cart order
+            try:
+                # Try to get the most recent pending order for this customer
+                cart_order = Orders.objects.filter(
+                    customer=customer,
+                    status='Pending'
+                ).order_by('-id').first()
+                
+                if cart_order:
+                    created = False
+                    print(f"DEBUG: Found existing cart order with ID: {cart_order.id}")
+                else:
+                    # Create new cart order if none exists
+                    cart_order = Orders.objects.create(
+                        customer=customer,
+                        status='Pending',
+                        email=customer.user.email,
+                        address=customer.get_full_address,
+                        mobile=customer.mobile,
+                        payment_method='cod'
+                    )
+                    created = True
+                    print(f"DEBUG: Created new cart order with ID: {cart_order.id}")
+                    
+            except Exception as e:
+                print(f"DEBUG: Error handling cart order: {e}")
+                # Fallback: create a new order
+                cart_order = Orders.objects.create(
+                    customer=customer,
+                    status='Pending',
+                    email=customer.user.email,
+                    address=customer.get_full_address,
+                    mobile=customer.mobile,
+                    payment_method='cod'
+                )
+                created = True
+                print(f"DEBUG: Fallback - created new cart order with ID: {cart_order.id}")
+            
+            print(f"DEBUG: Cart order {'created' if created else 'found'} with ID: {cart_order.id}")
+            
+            # Create custom order item
+            custom_item = CustomOrderItem.objects.create(
+                order=cart_order,
+                custom_design=custom_design,
+                quantity=quantity,
+                size=size,
+                price=base_price,
+                additional_info=additional_info,
+                is_pre_order=False
+            )
+            print(f"DEBUG: Custom cart item created with ID: {custom_item.id}")
+            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Custom jersey added to cart successfully!',
+                'cart_items': cart_order.customorderitem_set.count()
+            })
+            
+    except json.JSONDecodeError as e:
+        print(f"DEBUG: JSON decode error: {e}")
+        return JsonResponse({'success': False, 'message': 'Invalid request format. Please try again.'})
+    except ValueError as e:
+        print(f"DEBUG: Value error: {e}")
+        return JsonResponse({'success': False, 'message': f'Invalid data provided: {str(e)}'})
+    except Orders.MultipleObjectsReturned as e:
+        print(f"DEBUG: Multiple orders returned error: {e}")
+        # This should not happen with our new logic, but just in case
+        return JsonResponse({'success': False, 'message': 'Cart error detected. Please refresh and try again.'})
+    except Exception as e:
+        print(f"DEBUG: Unexpected error in add_custom_order: {e}")
+        print(f"DEBUG: Error type: {type(e)}")
+        import traceback
+        print(f"DEBUG: Full traceback: {traceback.format_exc()}")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error in add_custom_order: {str(e)}')
+        
+        # Provide more specific error messages based on error type
+        if 'CSRF' in str(e).upper():
+            return JsonResponse({'success': False, 'message': 'Security token expired. Please refresh the page and try again.'})
+        elif 'database' in str(e).lower() or 'connection' in str(e).lower():
+            return JsonResponse({'success': False, 'message': 'Database connection issue. Please try again in a moment.'})
+        else:
+            return JsonResponse({'success': False, 'message': 'An unexpected error occurred. Please try again or contact support if the issue persists.'})
+
+@admin_required
+def admin_order_detail_ajax(request, order_id):
+    """AJAX endpoint to get order details for the admin modal"""
+    try:
+        order = models.Orders.objects.get(id=order_id)
+        order_items = models.OrderItem.objects.filter(order=order)
+        custom_order_items = models.CustomOrderItem.objects.filter(order=order)
+        
+        # Calculate total from both regular and custom order items
+        total_price = sum(item.price * item.quantity for item in order_items)
+        total_price += sum(item.price * item.quantity for item in custom_order_items)
+        
+        # Prepare regular order items with product images
+        items_data = []
+        for item in order_items:
+            items_data.append({
+                'product_name': item.product.name,
+                'product_image': item.product.product_image.url if item.product.product_image else None,
+                'size': item.size,
+                'quantity': item.quantity,
+                'price': item.price,
+                'total': item.price * item.quantity,
+                'item_type': 'regular'
+            })
+        
+        # Prepare custom order items
+        for item in custom_order_items:
+            items_data.append({
+                'product_name': f"Custom Jersey Design - {item.custom_design.back_name if item.custom_design.back_name else 'Custom Design'}",
+                'product_image': item.custom_design.design_image.url if item.custom_design.design_image else None,
+                'size': item.size,
+                'quantity': item.quantity,
+                'price': item.price,
+                'total': item.price * item.quantity,
+                'item_type': 'custom',
+                'custom_item_id': item.id
+            })
+        
+        # Generate HTML for the modal
+        html_content = f"""
+        <div class="space-y-6">
+            <!-- Order Information -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-2">Order Information</h4>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-600">Order ID:</span>
+                        <span class="font-medium">{order.order_ref or f'ORD-{order.id}'}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Status:</span>
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{order.status}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Order Date:</span>
+                        <span class="font-medium">{order.order_date.strftime('%B %d, %Y') if order.order_date else order.created_at.strftime('%B %d, %Y')}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Customer:</span>
+                        <span class="font-medium">{order.customer.user.get_full_name() if order.customer and order.customer.user else 'Unknown'}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order Items -->
+            <div>
+                <h4 class="font-semibold text-gray-900 mb-3">Order Items</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+        """
+        
+        for item in items_data:
+            image_html = ""
+            if item['product_image']:
+                if item['item_type'] == 'custom':
+                    # For custom items, add download functionality
+                    image_html = f'''
+                    <div class="flex items-center gap-2">
+                        <img src="{item["product_image"]}" alt="{item["product_name"]}" class="w-16 h-12 object-cover rounded border">
+                        <a href="{item["product_image"]}" download="custom_jersey_design_{item.get("custom_item_id", "")}.png" 
+                           class="text-blue-600 hover:text-blue-800 text-xs" title="Download Design">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-4-4m4 4l4-4m-6 8h8a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z"></path>
+                            </svg>
+                        </a>
+                    </div>
+                    '''
+                else:
+                    image_html = f'<img src="{item["product_image"]}" alt="{item["product_name"]}" class="w-16 h-12 object-cover rounded border">'
+            else:
+                image_html = '<div class="w-16 h-12 bg-gray-100 border rounded flex items-center justify-center text-xs text-gray-500">No Image</div>'
+            
+            html_content += f"""
+                            <tr>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item['product_name']}</td>
+                                <td class="px-4 py-4 whitespace-nowrap">{image_html}</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{item['size'] or 'N/A'}</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{item['quantity']}</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">₱{item['price']:,.2f}</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">₱{item['total']:,.2f}</td>
+                            </tr>
+            """
+        
+        html_content += f"""
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Order Summary -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="flex justify-between items-center">
+                    <span class="text-lg font-semibold text-gray-900">Total Amount:</span>
+                    <span class="text-lg font-bold text-blue-600">₱{total_price:,.2f}</span>
+                </div>
+            </div>
+            
+            <!-- Shipping Information -->
+            <div>
+                <h4 class="font-semibold text-gray-900 mb-2">Shipping Information</h4>
+                <div class="text-sm text-gray-600">
+                    <p><strong>Address:</strong> {order.address or 'Not provided'}</p>
+                    <p><strong>Mobile:</strong> {order.mobile or 'Not provided'}</p>
+                    <p><strong>Email:</strong> {order.email or 'Not provided'}</p>
+                </div>
+            </div>
+        </div>
+        """
+        
+        return JsonResponse({
+            'success': True,
+            'html': html_content
+        })
+        
+    except models.Orders.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Order not found'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@admin_required
+def admin_view_pre_orders(request):
+    """
+    Admin view to display all pre-orders with customer and design details
+    """
+    # Get all custom order items that are pre-orders
+    pre_order_items = CustomOrderItem.objects.filter(is_pre_order=True).select_related(
+        'order', 'order__customer', 'custom_design'
+    ).order_by('-created_at')
+    
+    # Calculate status counts
+    status_counts = {
+        'pending': pre_order_items.filter(pre_order_status='pending').count(),
+        'confirmed': pre_order_items.filter(pre_order_status='confirmed').count(),
+        'in_production': pre_order_items.filter(pre_order_status='in_production').count(),
+        'completed': pre_order_items.filter(pre_order_status='completed').count(),
+    }
+    
+    # Calculate total revenue
+    total_revenue = sum(item.get_total_price() for item in pre_order_items)
+    
+    # Prepare pre-order data
+    pre_orders_data = []
+    for item in pre_order_items:
+        design = item.custom_design
+        order = item.order
+        customer = order.customer
+        
+        pre_orders_data.append({
+            'item': item,
+            'order': order,
+            'customer': customer,
+            'design': design,
+            'total_price': item.get_total_price(),
+            'design_summary': {
+                'jersey_type': design.jersey_type,
+                'primary_color': design.primary_color,
+                'secondary_color': design.secondary_color,
+                'pattern': design.pattern,
+                'front_number': design.front_number,
+                'back_name': design.back_name,
+                'back_number': design.back_number,
+                'text_color': design.text_color,
+                'logo_placement': design.logo_placement,
+            }
+        })
+    
+    context = {
+        'pre_orders_data': pre_orders_data,
+        'total_pre_orders': len(pre_orders_data),
+        'status_counts': status_counts,
+        'total_revenue': total_revenue,
+    }
+    
+    return render(request, 'ecom/admin_view_pre_orders.html', context)
+
+
+@customer_required
+def customer_pre_order_history(request):
+    """
+    Customer view to see their own pre-order history
+    """
+    customer = request.user.customer
+    
+    # Get all pre-orders for this customer
+    pre_order_items = CustomOrderItem.objects.filter(
+        is_pre_order=True,
+        order__customer=customer
+    ).select_related('order', 'custom_design').order_by('-created_at')
+    
+    # Prepare pre-order data
+    pre_orders_data = []
+    for item in pre_order_items:
+        design = item.custom_design
+        order = item.order
+        
+        pre_orders_data.append({
+            'item': item,
+            'order': order,
+            'design': design,
+            'total_price': item.get_total_price(),
+            'design_summary': {
+                'jersey_type': design.jersey_type,
+                'primary_color': design.primary_color,
+                'secondary_color': design.secondary_color,
+                'pattern': design.pattern,
+                'front_number': design.front_number,
+                'back_name': design.back_name,
+                'back_number': design.back_number,
+                'text_color': design.text_color,
+                'logo_placement': design.logo_placement,
+            }
+        })
+    
+    context = {
+        'pre_orders_data': pre_orders_data,
+        'total_pre_orders': len(pre_orders_data)
+    }
+    
+    return render(request, 'ecom/customer_pre_order_history.html', context)
+
+
+def remove_custom_item_view(request, pk):
+    """Remove a custom jersey item from the cart"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+    
+    try:
+        # Get the custom order item
+        custom_item = models.CustomOrderItem.objects.get(id=pk)
+        
+        # Check if the item belongs to the current user's pending order
+        customer = models.Customer.objects.get(user=request.user)
+        pending_order = models.Orders.objects.filter(customer=customer, status='Pending').first()
+        
+        if not pending_order or custom_item.order != pending_order:
+            return JsonResponse({'status': 'error', 'message': 'Item not found in your cart'}, status=404)
+        
+        # Delete the custom item
+        custom_item.delete()
+        
+        # If this was the last item in the order, delete the order too
+        remaining_items = models.CustomOrderItem.objects.filter(order=pending_order).count()
+        if remaining_items == 0:
+            pending_order.delete()
+        
+        return JsonResponse({'status': 'success', 'message': 'Item removed from cart'})
+        
+    except models.CustomOrderItem.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Item not found'}, status=404)
+    except models.Customer.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Customer profile not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

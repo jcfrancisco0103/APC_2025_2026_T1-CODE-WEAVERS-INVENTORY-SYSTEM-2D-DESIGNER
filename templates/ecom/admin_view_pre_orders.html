@@ -1,0 +1,266 @@
+{% extends 'ecom/admin_base.html' %}
+{% load static %}
+{% load humanize %}
+{% load custom_filters %}
+{% block content %}
+
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Pre-Orders</h1>
+    <p class="text-gray-600">Manage and track all custom jersey pre-orders</p>
+</div>
+
+<!-- Pre-Order Status Cards -->
+<div class="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+    <div class="bg-white rounded-lg shadow p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-500">Total Pre-Orders</p>
+                <p class="text-2xl font-bold text-gray-900">{{ total_pre_orders|default:0 }}</p>
+            </div>
+            <i data-lucide="clock" class="h-8 w-8 text-blue-500"></i>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-500">Pending</p>
+                <p class="text-2xl font-bold text-gray-900">{{ status_counts.pending|default:0 }}</p>
+            </div>
+            <i data-lucide="clock" class="h-8 w-8 text-yellow-500"></i>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-500">Confirmed</p>
+                <p class="text-2xl font-bold text-gray-900">{{ status_counts.confirmed|default:0 }}</p>
+            </div>
+            <i data-lucide="check-circle" class="h-8 w-8 text-blue-500"></i>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-500">In Production</p>
+                <p class="text-2xl font-bold text-gray-900">{{ status_counts.in_production|default:0 }}</p>
+            </div>
+            <i data-lucide="settings" class="h-8 w-8 text-purple-500"></i>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-500">Total Revenue</p>
+                <p class="text-2xl font-bold text-gray-900">₱{{ total_revenue|floatformat:2|default:0 }}</p>
+            </div>
+            <i data-lucide="dollar-sign" class="h-8 w-8 text-green-500"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Pre-Orders Table -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Pre-Order Details</h2>
+    </div>
+    
+    {% if pre_orders_data %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Design Details</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity & Size</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pre-Order Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for pre_order in pre_orders_data %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        #{{ pre_order.order.order_ref|default:pre_order.order.id }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10">
+                                <div class="h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center">
+                                    <span class="text-sm font-medium text-white">
+                                        {{ pre_order.customer.user.first_name|first|upper }}{{ pre_order.customer.user.last_name|first|upper }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ pre_order.customer.user.first_name }} {{ pre_order.customer.user.last_name }}
+                                </div>
+                                <div class="text-sm text-gray-500">{{ pre_order.customer.user.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900">
+                            <div class="flex items-center space-x-2 mb-1">
+                                <span class="inline-block w-4 h-4 rounded" style="background-color: {{ pre_order.design_summary.primary_color }}"></span>
+                                <span class="text-xs">{{ pre_order.design_summary.jersey_type|title }}</span>
+                            </div>
+                            {% if pre_order.design_summary.back_name %}
+                            <div class="text-xs text-gray-600">Name: {{ pre_order.design_summary.back_name }}</div>
+                            {% endif %}
+                            {% if pre_order.design_summary.back_number %}
+                            <div class="text-xs text-gray-600">Number: {{ pre_order.design_summary.back_number }}</div>
+                            {% endif %}
+                            <div class="text-xs text-gray-600">Pattern: {{ pre_order.design_summary.pattern|title }}</div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div>Qty: {{ pre_order.item.quantity }}</div>
+                        <div class="text-xs text-gray-500">Size: {{ pre_order.item.size }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ₱{{ pre_order.total_price|floatformat:2 }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ pre_order.item.created_at|date:"M d, Y" }}
+                        <div class="text-xs">{{ pre_order.item.created_at|time:"g:i A" }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if pre_order.order.status == 'Processing' %}bg-yellow-100 text-yellow-800
+                            {% elif pre_order.order.status == 'Order Confirmed' %}bg-blue-100 text-blue-800
+                            {% elif pre_order.order.status == 'Out for Delivery' %}bg-purple-100 text-purple-800
+                            {% elif pre_order.order.status == 'Delivered' %}bg-green-100 text-green-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ pre_order.order.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if pre_order.pre_order_status == 'pending' %}bg-yellow-100 text-yellow-800
+                            {% elif pre_order.pre_order_status == 'confirmed' %}bg-blue-100 text-blue-800
+                            {% elif pre_order.pre_order_status == 'in_production' %}bg-purple-100 text-purple-800
+                            {% elif pre_order.pre_order_status == 'completed' %}bg-green-100 text-green-800
+                            {% elif pre_order.pre_order_status == 'cancelled' %}bg-red-100 text-red-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ pre_order.get_pre_order_status_display|default:"Pending" }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button onclick="viewPreOrderDetails({{ pre_order.order.id }})" 
+                                class="text-indigo-600 hover:text-indigo-900 mr-3">
+                            View Details
+                        </button>
+                        <button onclick="confirmPreOrder({{ pre_order.order.id }})" 
+                                class="text-green-600 hover:text-green-900">
+                            Confirm
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Design Details</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity & Size</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pre-Order Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <tr>
+                    <td colspan="9" class="px-6 py-12 text-center">
+                        <div class="text-gray-500">
+                            <i data-lucide="clock" class="h-12 w-12 mx-auto mb-4 text-gray-300"></i>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No pre-orders found</h3>
+                            <p class="text-sm">There are currently no pre-orders in the system.</p>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Pre-Order Detail Modal -->
+<div id="preOrderDetailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Pre-Order Details</h3>
+            <button onclick="closePreOrderModal()" class="text-gray-400 hover:text-gray-600">
+                <i data-lucide="x" class="h-6 w-6"></i>
+            </button>
+        </div>
+        <div id="preOrderDetailContent">
+            <!-- Content will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize Lucide icons
+lucide.createIcons();
+
+function viewPreOrderDetails(orderId) {
+    const modal = document.getElementById('preOrderDetailModal');
+    const content = document.getElementById('preOrderDetailContent');
+    
+    // Show loading
+    content.innerHTML = '<div class="text-center py-4"><i data-lucide="loader-2" class="animate-spin h-6 w-6 mx-auto"></i><p class="mt-2">Loading...</p></div>';
+    lucide.createIcons();
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    
+    // Fetch order details
+    fetch(`/admin/orders/${orderId}/detail/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                content.innerHTML = data.html;
+                lucide.createIcons();
+            } else {
+                content.innerHTML = '<div class="text-center py-4 text-red-600">Error loading order details</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            content.innerHTML = '<div class="text-center py-4 text-red-600">Error loading order details</div>';
+        });
+}
+
+function closePreOrderModal() {
+    document.getElementById('preOrderDetailModal').classList.add('hidden');
+}
+
+function confirmPreOrder(orderId) {
+    if (confirm('Are you sure you want to confirm this pre-order?')) {
+        // Here you would implement the confirm pre-order functionality
+        alert('Pre-order confirmation functionality will be implemented');
+    }
+}
+
+// Close modal when clicking outside
+document.getElementById('preOrderDetailModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closePreOrderModal();
+    }
+});
+</script>
+
+{% endblock %}
