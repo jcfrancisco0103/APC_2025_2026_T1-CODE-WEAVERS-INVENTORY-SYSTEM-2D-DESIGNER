@@ -54,6 +54,10 @@
                 <span class="ml-auto bg-blue-100 text-blue-600 text-xs font-medium px-2.5 py-0.5 rounded-full">{{ ordercount }}</span>
                 {% endif %}
             </a>
+            <a href="{% url 'reports-dashboard' %}" class="nav-item {% if 'report' in request.resolver_match.url_name %}bg-blue-50 text-blue-700{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                <i data-lucide="file-text" class="mr-3 h-5 w-5"></i>
+                Manage Reports
+            </a>
             <a href="#" class="nav-item text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                 <i data-lucide="bar-chart-3" class="mr-3 h-5 w-5"></i>
                 Analytics

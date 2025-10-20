@@ -1,0 +1,326 @@
+{% extends 'ecom/admin_base.html' %}
+{% block content %}
+    <div class="mb-8">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Inventory Report</h1>
+                <p class="text-gray-600">Manage stock levels and inventory movements</p>
+            </div>
+            <div class="flex space-x-3">
+                <a href="{% url 'reports-dashboard' %}" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700">
+                    <i data-lucide="arrow-left" class="mr-2 h-4 w-4"></i>
+                    Back to Reports
+                </a>
+                <div class="relative">
+                    <button id="exportBtn" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700">
+                        <i data-lucide="download" class="mr-2 h-4 w-4"></i>
+                        Export Report
+                    </button>
+                    <div id="exportMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                        <div class="py-1">
+                            <a href="{% url 'export-report' %}?type=inventory&format=pdf&low_stock_threshold={{ low_stock_threshold }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export as PDF</a>
+                            <a href="{% url 'export-report' %}?type=inventory&format=csv&low_stock_threshold={{ low_stock_threshold }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export as CSV</a>
+                            <a href="{% url 'export-report' %}?type=inventory&format=excel&low_stock_threshold={{ low_stock_threshold }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export as Excel</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Filters</h3>
+        <form method="get" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="low_stock_threshold" class="block text-sm font-medium text-gray-700 mb-2">Low Stock Threshold</label>
+                <input type="number" id="low_stock_threshold" name="low_stock_threshold" value="{{ low_stock_threshold }}" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="w-full px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700">
+                    Apply Filters
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total Products</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ total_products }}</p>
+                </div>
+                <i data-lucide="package" class="h-8 w-8 text-purple-400"></i>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total Stock Value</p>
+                    <p class="text-2xl font-bold text-gray-900">₱{{ total_stock_value|floatformat:2 }}</p>
+                </div>
+                <i data-lucide="dollar-sign" class="h-8 w-8 text-green-400"></i>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Low Stock Items</p>
+                    <p class="text-2xl font-bold text-orange-600">{{ low_stock_items.count }}</p>
+                    <p class="text-xs text-gray-500">< {{ low_stock_threshold }} units</p>
+                </div>
+                <i data-lucide="alert-triangle" class="h-8 w-8 text-orange-400"></i>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Out of Stock</p>
+                    <p class="text-2xl font-bold text-red-600">{{ out_of_stock_items.count }}</p>
+                </div>
+                <i data-lucide="x-circle" class="h-8 w-8 text-red-400"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Inventory by Category -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Inventory by Category (Quantity)</h3>
+            <canvas id="categoryQuantityChart" width="400" height="200"></canvas>
+        </div>
+        
+        <!-- Inventory Value by Category -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Inventory Value by Category</h3>
+            <canvas id="categoryValueChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- Alerts Section -->
+    {% if low_stock_items or out_of_stock_items %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Low Stock Alerts -->
+        {% if low_stock_items %}
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200 bg-orange-50">
+                <h3 class="text-lg font-semibold text-orange-800 flex items-center">
+                    <i data-lucide="alert-triangle" class="mr-2 h-5 w-5"></i>
+                    Low Stock Alerts
+                </h3>
+            </div>
+            <div class="max-h-64 overflow-y-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for item in low_stock_items %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-medium">{{ item.quantity }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₱{{ item.price }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Out of Stock Alerts -->
+        {% if out_of_stock_items %}
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200 bg-red-50">
+                <h3 class="text-lg font-semibold text-red-800 flex items-center">
+                    <i data-lucide="x-circle" class="mr-2 h-5 w-5"></i>
+                    Out of Stock
+                </h3>
+            </div>
+            <div class="max-h-64 overflow-y-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for item in out_of_stock_items %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.category|default:"Uncategorized" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₱{{ item.price }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Category Breakdown -->
+    <div class="bg-white rounded-lg shadow mb-8">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Inventory by Category</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Quantity</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Value per Item</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for category, data in category_data.items %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ category }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ data.count }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ data.total_quantity }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₱{{ data.total_value|floatformat:2 }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if data.total_quantity > 0 %}
+                                ₱{% widthratio data.total_value data.total_quantity 1 %}
+                            {% else %}
+                                ₱0.00
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Inventory Items -->
+    {% if inventory_items %}
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Inventory Items</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in inventory_items %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.product.name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.sku|default:"N/A" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.location|default:"N/A" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if item.quantity <= 0 %}
+                                <span class="text-red-600 font-medium">{{ item.quantity }}</span>
+                            {% elif item.quantity < low_stock_threshold %}
+                                <span class="text-orange-600 font-medium">{{ item.quantity }}</span>
+                            {% else %}
+                                <span class="text-green-600 font-medium">{{ item.quantity }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.last_updated|date:"M d, Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Chart data from Django
+        const chartData = {{ chart_data|safe }};
+        
+        // Category Quantity Chart
+        const categoryQuantityCtx = document.getElementById('categoryQuantityChart').getContext('2d');
+        new Chart(categoryQuantityCtx, {
+            type: 'doughnut',
+            data: {
+                labels: chartData.categories,
+                datasets: [{
+                    data: chartData.quantities,
+                    backgroundColor: [
+                        '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B',
+                        '#EF4444', '#6366F1', '#EC4899', '#84CC16'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+        // Category Value Chart
+        const categoryValueCtx = document.getElementById('categoryValueChart').getContext('2d');
+        new Chart(categoryValueCtx, {
+            type: 'bar',
+            data: {
+                labels: chartData.categories,
+                datasets: [{
+                    label: 'Value (₱)',
+                    data: chartData.values,
+                    backgroundColor: 'rgba(139, 92, 246, 0.8)',
+                    borderColor: 'rgb(139, 92, 246)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₱' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Export menu toggle
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            document.getElementById('exportMenu').classList.toggle('hidden');
+        });
+        
+        // Close export menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const exportBtn = document.getElementById('exportBtn');
+            const exportMenu = document.getElementById('exportMenu');
+            
+            if (!exportBtn.contains(event.target) && !exportMenu.contains(event.target)) {
+                exportMenu.classList.add('hidden');
+            }
+        });
+    </script>
+{% endblock %}
