@@ -195,15 +195,6 @@ urlpatterns = [
     # Admin Transactions
     path('admin-transactions/', views.admin_transactions_view, name='admin-transactions'),
 
-    # Report Management URLs
-    path('reports/', views.reports_dashboard_view, name='reports-dashboard'),
-    path('reports/sales/', views.sales_report_view, name='sales-report'),
-    path('reports/customer/', views.customer_report_view, name='customer-report'),
-    path('reports/inventory/', views.inventory_report_view, name='inventory-report'),
-    path('reports/product/', views.product_report_view, name='product-report'),
-    path('reports/export/', views.export_report_view, name='export-report'),
-    path('reports/generate/', views.generate_report_view, name='generate-report'),
-
     # Custom Jersey Order API
     path('api/add-custom-order/', views.add_custom_order, name='api-add-custom-order'),
 
