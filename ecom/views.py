@@ -2994,13 +2994,6 @@ def manage_addresses_view(request):
     }
     return render(request, 'ecom/manage_addresses.html', context)
 
-# AI Designer View
-def ai_designer_view(request):
-    """
-    AI-powered 2D designer page for creating custom designs
-    """
-    return render(request, 'ecom/ai_designer.html')
-
 
 # Automated Delivery System Views
 import secrets
