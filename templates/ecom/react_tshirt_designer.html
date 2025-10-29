@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GearCraftWorks | T-Shirt Designer</title>
+    <title>WorksTeamWear | Jersey Designer</title>
     
     <!-- React T-Shirt Designer CSS -->
     <link rel="stylesheet" crossorigin href="{% static 'react-designer/assets/index-BI4ji8F3.css' %}">
@@ -36,11 +36,10 @@
         <nav class="bg-gray-900">
             <div class="max-w-7xl mx-auto px-4">
                 <div class="flex items-center justify-between h-16">
-                    <div class="text-white text-xl font-bold">GearCraftWorks</div>
+                    <div class="text-white text-xl font-bold">WorksTeamWear</div>
                     <div class="flex space-x-4">
                         <a href="{% url 'home' %}" class="text-gray-300 hover:text-white px-3 py-2">Home</a>
-                        <a href="{% url 'customizer' %}" class="text-gray-300 hover:text-white px-3 py-2">3D Designer</a>
-                        <a href="{% url 'react_tshirt_designer' %}" class="text-white px-3 py-2">T-Shirt Designer</a>
+                        <a href="{% url 'react_tshirt_designer' %}" class="text-white px-3 py-2">Jersey Designer</a>
                         <a href="{% url 'about' %}" class="text-gray-300 hover:text-white px-3 py-2">About Us</a>
                         {% if user.is_authenticated %}
                             <a href="{% url 'logout' %}" class="text-gray-300 hover:text-white px-3 py-2">Logout</a>
@@ -158,6 +157,6 @@
     </script>
     
     <!-- React T-Shirt Designer JavaScript -->
-    <script type="module" crossorigin src="{% static 'react-designer/assets/index-C-KKdc0q.js' %}?v={{ request.GET.ide_webview_request_time|default:'1' }}"></script>
+    <script type="module" crossorigin src="{% static 'react-designer/assets/index-Dieevr-q.js' %}?v={{ request.GET.ide_webview_request_time|default:'1' }}"></script>
 </body>
 </html>
