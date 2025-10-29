@@ -36,7 +36,7 @@ def send_verification_email(user, request):
         context = {
             'user': user,
             'verification_url': verification_url,
-            'site_name': 'E-Commerce Store'
+            'site_name': 'WorksTeamWear'
         }
         
         html_message = render_to_string('ecom/email/verification_email.html', context)

@@ -222,6 +222,8 @@
                                 <td> <span class="label label-default" style="font-size: 12px; border-radius: 30px;">{{order.status}}</span></td>
                                 {% elif order.status == 'Cancelled' %}
                                 <td> <span class="label label-danger" style="font-size: 12px; border-radius: 30px; color: #fff; background-color: #dc3545;">{{order.status}}</span></td>
+                                {% elif order.status == 'Cancellation Requested' %}
+                                <td> <span class="label label-warning" style="font-size: 12px; border-radius: 30px; color: #fff; background-color: #f0ad4e;">Waiting for approval of Cancellation</span></td>
                                 {%else%}
                                 <td> <span class="label label-primary" style="font-size: 12px; border-radius: 30px;">{{order.status}}</span></td>
                                 {%endif%}
@@ -272,6 +274,11 @@
                     <div class="track">
                         {%if order.status == 'Cancelled' %}
                         <div class="step active"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-times"></i> </span> <span class="text" style="color: #dc3545;">Order Cancelled</span> </div>
+                        <div class="step"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-check"></i> </span> <span class="text"> Order Confirmed</span> </div>
+                        <div class="step"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-truck"></i> </span> <span class="text"> On the way </span> </div>
+                        <div class="step"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-shopping-bag"></i> </span> <span class="text">Delivered</span> </div>
+                        {%elif order.status == 'Cancellation Requested' %}
+                        <div class="step active"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-clock-o"></i> </span> <span class="text" style="color: #f0ad4e;">Waiting for approval of Cancellation</span> </div>
                         <div class="step"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-check"></i> </span> <span class="text"> Order Confirmed</span> </div>
                         <div class="step"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-truck"></i> </span> <span class="text"> On the way </span> </div>
                         <div class="step"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-shopping-bag"></i> </span> <span class="text">Delivered</span> </div>

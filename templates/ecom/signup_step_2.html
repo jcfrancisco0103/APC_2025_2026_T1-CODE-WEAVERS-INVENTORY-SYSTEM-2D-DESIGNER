@@ -485,6 +485,12 @@
             <form method="post">
               {% csrf_token %}
               
+              <!-- Email Address -->
+              <div class="form-group">
+                <label for="{{ form.email.id_for_label }}">Email Address</label>
+                {% render_field form.email class="form-control" placeholder="Enter your email address" %}
+              </div>
+              
               <!-- Username -->
               <div class="form-group">
                 <label for="{{ form.username.id_for_label }}">Username</label>

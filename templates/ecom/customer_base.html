@@ -224,6 +224,11 @@ body {
     color: #6A5ACD
 }
 
+.status-badge.waiting {
+    background-color: #FFF8DC;
+    color: #DAA520
+}
+
 .status-badge.delivered {
     background-color: #98FB98;
     color: #228B22
@@ -409,12 +414,12 @@ body {
               </div>
               {% if to_receive_count %}<span class="status-badge receiving">{{ to_receive_count }}</span>{% endif %}
             </a>
-            <a class="dropdown-item" href="{% url 'delivered-orders' %}">
+            <a class="dropdown-item" href="{% url 'waiting-for-cancellation' %}">
               <div class="item-left">
-                <i class="fa fa-check-circle"></i>
-                <span>Delivered</span>
+                <i class="fa fa-hourglass-half"></i>
+                <span>Waiting for Cancellation</span>
               </div>
-              {% if delivered_count %}<span class="status-badge delivered">{{ delivered_count }}</span>{% endif %}
+              {% if waiting_cancellation_count %}<span class="status-badge waiting">{{ waiting_cancellation_count }}</span>{% endif %}
             </a>
             <a class="dropdown-item" href="{% url 'cancelled-orders' %}">
               <div class="item-left">
@@ -422,6 +427,13 @@ body {
                 <span>Cancelled</span>
               </div>
               {% if cancelled_count %}<span class="status-badge cancelled">{{ cancelled_count }}</span>{% endif %}
+            </a>
+            <a class="dropdown-item" href="{% url 'delivered-orders' %}">
+              <div class="item-left">
+                <i class="fa fa-check-circle"></i>
+                <span>Delivered</span>
+              </div>
+              {% if delivered_count %}<span class="status-badge delivered">{{ delivered_count }}</span>{% endif %}
             </a>
           </div>
         </li>

@@ -150,11 +150,20 @@ class Orders(models.Model):
         ('Order Confirmed', 'Order Confirmed - In Production'),
         ('Out for Delivery', 'Out for Delivery'),
         ('Delivered', 'Delivered'),
+        ('Cancellation Requested', 'Waiting for approval of Cancellation'),
         ('Cancelled', 'Cancelled')
     )
     PAYMENT_METHODS = (
         ('cod', 'Cash on Delivery'),
-        ('paypal', 'PayPal')
+        ('paypal', 'PayPal'),
+        ('gcash', 'GCash')
+    )
+    
+    CANCELLATION_STATUS = (
+        ('none', 'No Cancellation Request'),
+        ('requested', 'Cancellation Requested'),
+        ('approved', 'Cancellation Approved'),
+        ('rejected', 'Cancellation Rejected')
     )
     created_at = models.DateTimeField(auto_now_add=True, help_text='When the order was created')
     updated_at = models.DateTimeField(auto_now=True, help_text='When the order was last updated')
@@ -168,10 +177,23 @@ class Orders(models.Model):
     estimated_delivery_date = models.DateField(null=True, blank=True, help_text='Estimated delivery date')
     notes = models.TextField(blank=True, null=True, help_text='Additional notes about the order')
     payment_method = models.CharField(max_length=10, choices=PAYMENT_METHODS, default='cod', help_text='Payment method for the order')
+    transaction_id = models.CharField(max_length=100, null=True, blank=True, help_text='PayPal or GCash transaction ID for paid orders')
     order_ref = models.CharField(max_length=12, unique=True, null=True, blank=True, help_text='Unique short order reference ID')
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text='Delivery fee for this order')
     delivery_proof_photo = models.ImageField(upload_to='delivery_proof/', null=True, blank=True, help_text='Customer uploaded proof of delivery photo')
     customer_received_at = models.DateTimeField(null=True, blank=True, help_text='When customer confirmed receipt with photo proof')
+    
+    # Cancellation approval fields
+    cancellation_status = models.CharField(max_length=20, choices=CANCELLATION_STATUS, default='none', help_text='Status of cancellation request')
+    cancellation_reason = models.TextField(blank=True, null=True, help_text='Reason provided by customer for cancellation')
+    cancellation_requested_at = models.DateTimeField(null=True, blank=True, help_text='When cancellation was requested')
+    cancellation_approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_cancellations', help_text='Super Admin who approved/rejected the cancellation')
+    cancellation_approved_at = models.DateTimeField(null=True, blank=True, help_text='When cancellation was approved/rejected')
+    cancellation_admin_notes = models.TextField(blank=True, null=True, help_text='Admin notes regarding the cancellation decision')
+    refund_processed = models.BooleanField(default=False, help_text='Whether refund has been processed for paid orders')
+    refund_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Amount refunded to customer')
+    refund_processed_at = models.DateTimeField(null=True, blank=True, help_text='When refund was processed')
+    refund_processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_refunds', help_text='Admin who processed the refund')
     
     def __str__(self):
         return f"Order {self.order_ref or self.id} - {self.customer.user.username if self.customer else 'No Customer'}"
@@ -180,6 +202,63 @@ class Orders(models.Model):
         """Calculate total amount from all order items including delivery fee"""
         items_total = sum(item.price * item.quantity for item in self.orderitem_set.all())
         return items_total + self.delivery_fee
+    
+    def can_request_cancellation(self):
+        """Check if order can be cancelled by customer"""
+        return (self.status in ['Pending', 'Processing', 'Order Confirmed'] and 
+                self.cancellation_status == 'none')
+    
+    def is_paid_order(self):
+        """Check if this is a paid order (PayPal or GCash)"""
+        return self.payment_method in ['paypal', 'gcash']
+    
+    def request_cancellation(self, reason, customer_user):
+        """Request cancellation of the order"""
+        if self.can_request_cancellation():
+            self.cancellation_status = 'requested'
+            self.cancellation_reason = reason
+            self.cancellation_requested_at = timezone.now()
+            self.status = 'Cancellation Requested'
+            self.status_updated_at = timezone.now()
+            self.save()
+            return True
+        return False
+    
+    def approve_cancellation(self, admin_user, admin_notes=""):
+        """Approve the cancellation request"""
+        if self.cancellation_status == 'requested':
+            self.cancellation_status = 'approved'
+            self.cancellation_approved_by = admin_user
+            self.cancellation_approved_at = timezone.now()
+            self.cancellation_admin_notes = admin_notes
+            self.status = 'Cancelled'
+            self.status_updated_at = timezone.now()
+            
+            # Restore stock for each item in the order
+            order_items = self.orderitem_set.all()
+            for item in order_items:
+                product = item.product
+                product.quantity += item.quantity
+                product.save()
+            
+            self.save()
+            return True
+        return False
+    
+    def reject_cancellation(self, admin_user, admin_notes=""):
+        """Reject the cancellation request"""
+        if self.cancellation_status == 'requested':
+            self.cancellation_status = 'rejected'
+            self.cancellation_approved_by = admin_user
+            self.cancellation_approved_at = timezone.now()
+            self.cancellation_admin_notes = admin_notes
+            # Revert status back to original
+            if self.status == 'Cancellation Requested':
+                self.status = 'Pending'  # or determine appropriate status
+                self.status_updated_at = timezone.now()
+            self.save()
+            return True
+        return False
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Orders, on_delete=models.CASCADE)

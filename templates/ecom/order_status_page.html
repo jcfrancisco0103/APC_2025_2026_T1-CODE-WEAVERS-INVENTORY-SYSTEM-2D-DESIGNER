@@ -192,7 +192,7 @@
                                 {% if order_dict.order.estimated_delivery_date %}
                                 <p class="mb-0">Estimated Delivery: {{ order_dict.order.estimated_delivery_date|date:"M d, Y" }}</p>
                                 {% endif %}
-                                {% if order_dict.order.status == 'Pending' %}
+                                {% if order_dict.order.status == 'Pending' or order_dict.order.status == 'Processing' or order_dict.order.status == 'Order Confirmed' %}
                                 <a class="btn btn-primary btn-sm rounded-0" style="text-decoration:none;" href="{% url 'download-invoice' order_dict.order.id %}" target="_blank"><i class="fa fa-download " style="font-size: 12px;height:auto"></i> Download Invoice</a>
                                 <button type="button" class="btn btn-danger btn-sm rounded-0" data-toggle="modal" data-target="#cancelModal{{order_dict.order.id}}"><i class="fa fa-times" style="font-size: 12px;height:auto"></i> Cancel Order</button>
                                 {% elif order_dict.order.status == 'Delivered' and not order_dict.order.customer_received_at %}
