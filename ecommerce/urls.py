@@ -12,6 +12,7 @@ from django.conf.urls.static import static
 from ecom.views import admin_manage_inventory_view
 from ecom import api_views
 from ecom import chatbot_views
+from ecom import ai_views
 
 
 
@@ -106,7 +107,8 @@ urlpatterns = [
     path('customer-address', views.customer_address_view,name='customer-address'),
     path('payment-success/', views.payment_success_view,name='payment-success'),
     path('customizer/', views.jersey_customizer, name='customizer'),
-    path('jersey-customizer/advanced/', views.jersey_customizer_advanced_view, name='jersey-customizer-advanced'),
+    path('react-tshirt-designer/', views.react_tshirt_designer, name='react_tshirt_designer'),
+    path('jersey-designer/', views.react_tshirt_designer, name='jersey-designer'),
     path('jersey-customizer/new/', views.jersey_customizer_new_view, name='jersey-customizer-new'),
 
     path('home', views.home,name='home'),
@@ -118,7 +120,7 @@ urlpatterns = [
     path('instagram/', RedirectView.as_view(url='https://www.instagram.com/worksteamwear/'), name='instagram'),
     path('create/', views.create, name='create'),
     path('jersey-customizer/3d/', views.jersey_customizer_3d_view, name='jersey_customizer_3d'),
-    path('jersey-customizer/advanced/', views.jersey_customizer_advanced_view, name='jersey_customizer_advanced'),
+    path('jersey-designer/', views.react_tshirt_designer, name='jersey_designer'),
     path('jersey-customizer/', views.jersey_customizer, name='jersey_customizer'),
     path('jersey-template/', views.jersey_template, name='jersey_template'),
     path('interactive-jersey/', views.interactive_jersey, name='interactive_jersey'),
@@ -133,20 +135,7 @@ urlpatterns = [
     path('update-address/', views.update_address, name='update-address'),
     path('admin-manage-inventory/', admin_manage_inventory_view, name='admin-manage-inventory'),
 
-    # PSGC address APIs for cascade
-    path('api/regions/', api_views.get_regions, name='api-regions'),
-    path('api/provinces/', api_views.get_provinces, name='api-provinces'),
-    path('api/cities/', api_views.get_cities, name='api-cities'),
-    path('api/barangays/', api_views.get_barangays, name='api-barangays'),
 
-    # PSGC API proxy endpoints
-    path('api/regions/', api_views.get_regions, name='api-regions'),
-    path('api/provinces/', api_views.get_provinces, name='api-provinces'),
-    path('api/cities/', api_views.get_cities, name='api-cities'),
-    path('api/barangays/', api_views.get_barangays, name='api-barangays'),
-    
-    # AI Design Generation API
-    path('api/generate-ai-design/', api_views.generate_ai_design, name='api-generate-ai-design'),
     path('save-address/', views.save_new_address, name='save-address'),
     path('get-saved-addresses/', views.get_saved_addresses, name='get-saved-addresses'),
     path('set-default-address/<int:address_id>/', views.set_default_address, name='set-default-address'),
@@ -187,14 +176,17 @@ urlpatterns = [
     path('api/support/new-messages/', chatbot_views.support_new_messages, name='support-new-messages'),
     path('api/support/request-new-agent/', chatbot_views.support_request_new_agent, name='support-request-new-agent'),
     
-    # AI Designer
-    path('ai-designer/', views.ai_designer_view, name='ai-designer'),
-
     # Admin Transactions
     path('admin-transactions/', views.admin_transactions_view, name='admin-transactions'),
 
     # Custom Jersey Order API
     path('api/add-custom-order/', views.add_custom_order, name='api-add-custom-order'),
+    path('api/save-tshirt-design/', views.save_tshirt_design, name='save_tshirt_design'),
+    path('api/add-custom-tshirt-to-cart/', views.add_custom_tshirt_to_cart, name='add_custom_tshirt_to_cart'),
+
+    # AI Features API
+    path('api/ai/color-harmony/', ai_views.ai_color_harmony_recommend, name='ai-color-harmony'),
+    path('api/ai/pattern-suggest/', ai_views.ai_jersey_pattern_suggest, name='ai-pattern-suggest'),
 
     # API Welcome endpoint with logging
     path('api/welcome/', views.api_welcome, name='api-welcome'),

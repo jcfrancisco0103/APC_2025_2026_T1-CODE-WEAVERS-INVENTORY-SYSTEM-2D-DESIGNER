@@ -2394,22 +2394,24 @@ def my_view(request):
     instagram_url = reverse('instagram')
 
 
-import io
-from xhtml2pdf import pisa
+# Temporarily commented out for setup - uncomment when xhtml2pdf is properly installed
+# import io
+# from xhtml2pdf import pisa
 from django.template.loader import get_template
 from django.template import Context
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 
 
-def render_to_pdf(template_src, context_dict):
-    template = get_template(template_src)
-    html = template.render(context_dict)
-    result = io.BytesIO()
-    pdf = pisa.pisaDocument(io.BytesIO(html.encode("UTF-8")), result, encoding='UTF-8')
-    if not pdf.err:
-        return HttpResponse(result.getvalue(), content_type='application/pdf')
-    return None
+# Temporarily commented out - uncomment when xhtml2pdf is properly installed
+# def render_to_pdf(template_src, context_dict):
+#     template = get_template(template_src)
+#     html = template.render(context_dict)
+#     result = io.BytesIO()
+#     pdf = pisa.pisaDocument(io.BytesIO(html.encode("UTF-8")), result, encoding='UTF-8')
+#     if not pdf.err:
+#         return HttpResponse(result.getvalue(), content_type='application/pdf')
+#     return None
 
 
 
@@ -2541,7 +2543,7 @@ def jersey_customizer(request):
 
 @login_required(login_url='customerlogin')
 def home(request):
-    return render(request, 'ecom/home.html')
+    return render(request, 'ecom/customer_home.html')
 
 def manage_profile(request):
     return render(request, 'ecom/manage_profile.html')
@@ -2568,6 +2570,9 @@ def jersey_customizer_new_view(request):
 
 def jersey_customizer(request):
     return render(request, 'ecom/customizer.html')
+
+def react_tshirt_designer(request):
+    return render(request, 'ecom/react_tshirt_designer.html')
 
 def jersey_template(request):
     return render(request, 'ecom/jersey_template.html')
@@ -3658,6 +3663,85 @@ def admin_transactions_view(request):
     }
 
     return render(request, 'ecom/admin_transactions.html', context)
+
+@csrf_exempt
+@login_required(login_url='customerlogin')
+@user_passes_test(is_customer)
+def save_tshirt_design(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            customer = models.Customer.objects.get(user_id=request.user.id)
+            
+            # Create a new custom jersey design record
+            design = models.CustomJerseyDesign.objects.create(
+                customer=customer,
+                design_name=data.get('design_name', 'Custom T-Shirt Design'),
+                design_data=json.dumps(data.get('design_data', {})),
+                preview_image=data.get('preview_image', ''),
+                price=data.get('price', 25.00)
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'design_id': design.id,
+                'message': 'Design saved successfully'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=400)
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+@login_required(login_url='customerlogin')
+@user_passes_test(is_customer)
+def add_custom_tshirt_to_cart(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            customer = models.Customer.objects.get(user_id=request.user.id)
+            
+            # Get or create a pending cart order
+            cart_order, created = models.Orders.objects.get_or_create(
+                customer=customer,
+                status='Pending',
+                defaults={
+                    'order_ref': f'CART-{customer.id}-{timezone.now().strftime("%Y%m%d%H%M%S")}',
+                    'total_amount': 0
+                }
+            )
+            
+            # Create custom order item
+            custom_item = models.CustomOrderItem.objects.create(
+                order=cart_order,
+                design_name=data.get('design_name', 'Custom T-Shirt'),
+                design_data=json.dumps(data.get('design_data', {})),
+                preview_image=data.get('preview_image', ''),
+                quantity=data.get('quantity', 1),
+                unit_price=data.get('price', 25.00),
+                size=data.get('size', 'M'),
+                color=data.get('color', 'White')
+            )
+            
+            # Update cart total
+            cart_order.total_amount += custom_item.unit_price * custom_item.quantity
+            cart_order.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Custom t-shirt added to cart successfully',
+                'cart_item_id': custom_item.id
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=400)
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
 
 
 from django.views.decorators.csrf import csrf_protect

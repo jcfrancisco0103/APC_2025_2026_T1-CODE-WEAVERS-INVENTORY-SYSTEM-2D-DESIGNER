@@ -149,7 +149,7 @@
 
   .search-box input {
     width: 100%;
-    padding: 10px 15px 10px 40px;
+    padding: 10px 15px 10px 60px;
     border: 1px solid #ddd;
     border-radius: 30px;
     font-size: 14px;
@@ -166,7 +166,7 @@
   .search-box i {
     position: absolute;
     left: 15px;
-    top: 50%;
+    top: 40%;
     transform: translateY(-50%);
     color: #aaa;
   }
@@ -1056,7 +1056,13 @@
         <input type="checkbox" name="in_stock" value="1" {% if in_stock_only %}checked{% endif %} onchange="this.form.submit()"> In Stock Only
       </label>
       
-      <button type="submit" class="filter-select" style="background-color: #3E454C; color: white; border: none; cursor: pointer;">
+      <button type="submit" class="filter-select" 
+          style="background-color: #3E454C; color: white; border: none; cursor: pointer;
+          padding-left: 5px;
+          padding-right: 25px;
+          padding-top: 1px;
+          padding-bottom: 1px;
+          border-radius: 10px;">
         <i class="fa fa-search"></i> Search
       </button>
     </div>
