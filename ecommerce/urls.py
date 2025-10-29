@@ -12,6 +12,7 @@ from django.conf.urls.static import static
 from ecom.views import admin_manage_inventory_view
 from ecom import api_views
 from ecom import chatbot_views
+from ecom import ai_views
 
 
 
@@ -184,6 +185,10 @@ urlpatterns = [
     path('api/add-custom-order/', views.add_custom_order, name='api-add-custom-order'),
     path('api/save-tshirt-design/', views.save_tshirt_design, name='save_tshirt_design'),
     path('api/add-custom-tshirt-to-cart/', views.add_custom_tshirt_to_cart, name='add_custom_tshirt_to_cart'),
+
+    # AI Features API
+    path('api/ai/color-harmony/', ai_views.ai_color_harmony_recommend, name='ai-color-harmony'),
+    path('api/ai/pattern-suggest/', ai_views.ai_jersey_pattern_suggest, name='ai-pattern-suggest'),
 
 ]
 
