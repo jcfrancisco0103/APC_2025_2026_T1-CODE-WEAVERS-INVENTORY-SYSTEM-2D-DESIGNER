@@ -474,6 +474,17 @@
                 <option value="quarter">This Quarter</option>
                 <option value="year">This Year</option>
             </select>
+            <button class="btn" onclick="toggleCustomDateRange()" id="customRangeBtn">
+                Custom Range
+            </button>
+            <div id="customDateRange" style="display: none; align-items: center; gap: 10px; margin-left: 10px;">
+                <label for="startDate">From:</label>
+                <input type="date" id="startDate" class="date-input">
+                <label for="endDate">To:</label>
+                <input type="date" id="endDate" class="date-input">
+                <button class="btn" onclick="applyCustomDateRange()">Apply</button>
+            </div>
+            <div id="selectedDateRangeDisplay" style="margin-left: 10px; font-weight: bold; padding-top: 8px;"></div>
         </div>
 
         <!-- KPI Cards -->
@@ -1341,14 +1352,115 @@
         // Update date range
         function updateDateRange() {
             const dateRangeElement = document.getElementById('dateRange');
+            
             if (dateRangeElement) {
                 const range = dateRangeElement.value;
                 console.log('Date range changed to:', range);
-                // Add your date range update logic here
+                
+                // Redirect with the selected date range
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.set('date_range', range);
+                currentUrl.searchParams.delete('start_date');
+                currentUrl.searchParams.delete('end_date');
+                window.location.href = currentUrl.toString();
             }
+        }
+        
+        // Toggle custom date range display
+        function toggleCustomDateRange() {
+            const customDateRange = document.getElementById('customDateRange');
+            const urlParams = new URLSearchParams(window.location.search);
+            const isCustomRange = urlParams.get('date_range') === 'custom';
+            
+            if (customDateRange.style.display === 'none' || customDateRange.style.display === '') {
+                customDateRange.style.display = 'flex';
+                
+                // If we already have custom range parameters, use them
+                if (isCustomRange) {
+                    const startDate = urlParams.get('start_date');
+                    const endDate = urlParams.get('end_date');
+                    
+                    if (startDate) document.getElementById('startDate').value = startDate;
+                    if (endDate) document.getElementById('endDate').value = endDate;
+                } else {
+                    // Set default dates (today and 7 days ago)
+                    const today = new Date();
+                    const weekAgo = new Date();
+                    weekAgo.setDate(today.getDate() - 7);
+                    
+                    document.getElementById('startDate').value = formatDate(weekAgo);
+                    document.getElementById('endDate').value = formatDate(today);
+                }
+            } else {
+                customDateRange.style.display = 'none';
+            }
+        }
+        
+        // Format date to YYYY-MM-DD for input fields
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // Format date for display (e.g., "August 2, 2023")
+        function formatDateForDisplay(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        }
+        
+        // Display the selected date range
+        function displaySelectedDateRange(startDate, endDate) {
+            const displayElement = document.getElementById('selectedDateRangeDisplay');
+            if (startDate && endDate) {
+                const formattedStart = formatDateForDisplay(startDate);
+                const formattedEnd = formatDateForDisplay(endDate);
+                displayElement.textContent = `Date Range: ${formattedStart} to ${formattedEnd}`;
+                displayElement.style.display = 'block';
+            } else {
+                displayElement.style.display = 'none';
+            }
+        }
+        
+        // Apply custom date range filter
+        function applyCustomDateRange() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+            
+            // Display the selected date range
+            displaySelectedDateRange(startDate, endDate);
+            
+            // Redirect to the same page with date parameters
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('start_date', startDate);
+            currentUrl.searchParams.set('end_date', endDate);
+            currentUrl.searchParams.set('date_range', 'custom');
+            window.location.href = currentUrl.toString();
         }
 
         // Initialize on page load
-        document.addEventListener('DOMContentLoaded', initCharts);
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            
+            // Check if custom date range is active
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('date_range') === 'custom') {
+                // Show the custom date range inputs
+                document.getElementById('customDateRange').style.display = 'flex';
+                
+                // Display the selected date range
+                const startDate = urlParams.get('start_date');
+                const endDate = urlParams.get('end_date');
+                if (startDate && endDate) {
+                    displaySelectedDateRange(startDate, endDate);
+                }
+            }
+        });
     </script>
 {% endblock %}
