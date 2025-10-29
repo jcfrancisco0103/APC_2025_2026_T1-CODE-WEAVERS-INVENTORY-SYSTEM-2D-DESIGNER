@@ -395,12 +395,12 @@ body {
               {% if pending_count %}<span class="status-badge pending">{{ pending_count }}</span>{% endif %}
             </a>
             <a class="dropdown-item" href="{% url 'to-ship-orders' %}">
-              <div class="item-left">
-                <i class="fa fa-box"></i>
-                <span>To Ship</span>
-              </div>
-              {% if to_ship_count %}<span class="status-badge shipping">{{ to_ship_count }}</span>{% endif %}
-            </a>
+    <div class="item-left">
+        <i class="fa fa-ship" aria-hidden="true"></i>
+        <span>To Ship</span>
+    </div>
+</a>
+
             <a class="dropdown-item" href="{% url 'to-receive-orders' %}">
               <div class="item-left">
                 <i class="fa fa-truck"></i>
