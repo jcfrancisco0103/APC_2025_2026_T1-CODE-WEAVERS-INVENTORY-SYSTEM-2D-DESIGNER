@@ -1646,6 +1646,66 @@ def cancelled_orders_view(request):
     return render(request, 'ecom/order_status_page.html', {'orders_with_items': orders_with_items, 'status': 'Cancelled', 'title': 'Cancelled Orders'})
 
 @login_required(login_url='customerlogin')
+def waiting_for_cancellation_view(request):
+    try:
+        customer = models.Customer.objects.get(user_id=request.user.id)
+    except models.Customer.DoesNotExist:
+        messages.error(request, 'Customer profile not found. Please contact support.')
+        return redirect('customer-home')
+    
+    orders = models.Orders.objects.filter(customer=customer, cancellation_status='requested').order_by('-cancellation_requested_at')
+    orders_with_items = []
+    for order in orders:
+        # Get regular order items
+        order_items = models.OrderItem.objects.filter(order=order)
+        products = []
+        total = Decimal('0.00')
+        for item in order_items:
+            # Use VAT-inclusive calculation (same as cart)
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            products.append({
+                'item': item,
+                'size': item.size,
+                'quantity': item.quantity,
+                'line_total': line_total,
+            })
+
+        # Get custom order items
+        custom_order_items = models.CustomOrderItem.objects.filter(order=order)
+        custom_items = []
+        for item in custom_order_items:
+            # Use VAT-inclusive calculation (same as cart)
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            custom_items.append({
+                'custom_item': item,
+                'size': item.size,
+                'quantity': item.quantity,
+                'price': item.price,
+                'line_total': line_total,
+            })
+        
+        # Calculate VAT using same method as cart (VAT-inclusive)
+        vat_amount = total * Decimal(12) / Decimal(112)
+        net_subtotal = total - vat_amount
+        # Use stored delivery fee from order
+        delivery_fee = order.delivery_fee
+        grand_total = total + Decimal(delivery_fee)
+        
+        orders_with_items.append({
+            'order': order,
+            'products': products,
+            'custom_items': custom_items,
+            'total': total,
+            'net_subtotal': net_subtotal,
+            'vat_amount': vat_amount,
+            'delivery_fee': delivery_fee,
+            'grand_total': grand_total,
+        })
+    return render(request, 'ecom/order_status_page.html', {'orders_with_items': orders_with_items, 'status': 'Waiting for Cancellation', 'title': 'Waiting for Cancellation'})
+
+@login_required(login_url='customerlogin')
 def cart_page(request):
     user = request.user
     cart_items = cart_items.objects.filter(user=user)
