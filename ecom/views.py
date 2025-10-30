@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Q
 from .models import Customer, SavedAddress, CustomJerseyDesign, CustomOrderItem
 from django.urls import reverse
 from .forms import InventoryForm
@@ -55,19 +56,50 @@ def is_admin(user):
     """
     return user.is_authenticated and user.is_staff
 
+# Helper function to check if user is SuperAdmin
+def is_superadmin(user):
+    """
+    Check if the user is a SuperAdmin
+    """
+    if not user.is_authenticated:
+        return False
+    try:
+        return hasattr(user, 'superadmin') and user.superadmin.is_active
+    except:
+        return False
+
+# Helper function to check if user has admin or superadmin privileges
+def has_admin_access(user):
+    """
+    Check if user has admin access (either staff or SuperAdmin)
+    """
+    return is_admin(user) or is_superadmin(user)
+
 # Admin required decorator
 def admin_required(view_func):
     """
-    Decorator that ensures only authenticated admin users can access a view.
+    Decorator that ensures only authenticated admin users (staff or SuperAdmin) can access a view.
     If user is not admin, logs them out and redirects to admin login.
     """
     def wrapper(request, *args, **kwargs):
-        if not is_admin(request.user):
+        if not has_admin_access(request.user):
             # Log out the user if they're not an admin
             from django.contrib.auth import logout
             logout(request)
             messages.error(request, 'Access denied. Admin privileges required.')
             return redirect('adminlogin')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+# SuperAdmin required decorator
+def superadmin_required(view_func):
+    """
+    Decorator that ensures only SuperAdmin users can access a view.
+    """
+    def wrapper(request, *args, **kwargs):
+        if not is_superadmin(request.user):
+            messages.error(request, 'Access denied. SuperAdmin privileges required.')
+            return redirect('admin-dashboard')
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -4967,6 +4999,176 @@ def approve_cancellation_request(request, order_id):
             return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
         messages.error(request, 'Invalid request method.')
         return redirect('admin-view-cancellation-requests')
+
+
+# SuperAdmin Management Views
+@superadmin_required
+def superadmin_dashboard_view(request):
+    """
+    SuperAdmin dashboard for managing users and system administration
+    """
+    # Get statistics efficiently
+    total_users = User.objects.count()
+    total_customers = models.Customer.objects.count()
+    total_superadmins = models.SuperAdmin.objects.filter(is_active=True).count()
+    total_staff = User.objects.filter(is_staff=True).count()
+    
+    # Recent users with optimized queries
+    recent_users = User.objects.select_related().order_by('-date_joined')[:10]
+    
+    # Recent SuperAdmins with user data
+    recent_superadmins = models.SuperAdmin.objects.select_related('user').filter(is_active=True).order_by('-created_at')[:5]
+    
+    context = {
+        'total_users': total_users,
+        'total_customers': total_customers,
+        'total_superadmins': total_superadmins,
+        'total_staff': total_staff,
+        'recent_users': recent_users,
+        'recent_superadmins': recent_superadmins,
+    }
+    
+    return render(request, 'ecom/superadmin_dashboard.html', context)
+
+
+@superadmin_required
+def manage_users_view(request):
+    """
+    SuperAdmin view to manage staff and superadmins only
+    Optimized to avoid N+1 queries
+    """
+    # Get filter parameter
+    user_filter = request.GET.get('filter', 'all')
+    
+    # Base queryset with optimized joins - exclude customers
+    users_queryset = User.objects.select_related(
+        'superadmin'
+    ).filter(
+        Q(is_staff=True) | Q(superadmin__isnull=False)
+    ).order_by('-date_joined')
+    
+    # Apply filters
+    if user_filter == 'staff':
+        users_queryset = users_queryset.filter(is_staff=True, superadmin__isnull=True)
+    elif user_filter == 'superadmins':
+        users_queryset = users_queryset.filter(superadmin__isnull=False)
+    
+    # Limit results for performance (paginate in production)
+    users = users_queryset[:100]  # Limit to 100 users for performance
+    
+    # Process user data efficiently
+    users_data = []
+    for user in users:
+        # Use select_related data to avoid additional queries
+        superadmin_data = getattr(user, 'superadmin', None)
+        
+        user_info = {
+            'user': user,
+            'is_superadmin': superadmin_data is not None,
+            'superadmin_data': superadmin_data,
+        }
+        users_data.append(user_info)
+    
+    context = {
+        'users_data': users_data,
+        'current_filter': user_filter,
+        'total_shown': len(users_data),
+    }
+    
+    return render(request, 'ecom/manage_users.html', context)
+
+
+@superadmin_required
+def create_staff_view(request):
+    """
+    Create new Staff user
+    """
+    if request.method == 'POST':
+        # Get form data
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        password = request.POST.get('password')
+        employee_id = request.POST.get('employee_id')
+        department = request.POST.get('department')
+        position = request.POST.get('position')
+        phone = request.POST.get('phone')
+        
+        try:
+            # Create User with staff privileges only
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                password=password,
+                is_staff=True,  # Give staff privileges
+                is_active=True
+            )
+            
+            messages.success(request, f'Staff account for {user.get_full_name()} created successfully!')
+            return redirect('manage-users')
+            
+        except Exception as e:
+            messages.error(request, f'Error creating staff account: {str(e)}')
+    
+    return render(request, 'ecom/create_staff.html')
+
+
+@superadmin_required
+def edit_user_view(request, user_id):
+    """
+    Edit user information (customers, staff, superadmins)
+    """
+    user = get_object_or_404(User, id=user_id)
+    
+    # Get related data
+    customer_data = None
+    superadmin_data = None
+    
+    try:
+        customer_data = models.Customer.objects.get(user=user)
+    except models.Customer.DoesNotExist:
+        pass
+    
+    try:
+        superadmin_data = models.SuperAdmin.objects.get(user=user)
+    except models.SuperAdmin.DoesNotExist:
+        pass
+    
+    if request.method == 'POST':
+        try:
+            # Update User data
+            user.first_name = request.POST.get('first_name', user.first_name)
+            user.last_name = request.POST.get('last_name', user.last_name)
+            user.email = request.POST.get('email', user.email)
+            user.is_active = request.POST.get('is_active') == 'on'
+            user.is_staff = request.POST.get('is_staff') == 'on'
+            user.save()
+            
+            # Update SuperAdmin data if exists
+            if superadmin_data:
+                superadmin_data.employee_id = request.POST.get('employee_id', superadmin_data.employee_id)
+                superadmin_data.department = request.POST.get('department', superadmin_data.department)
+                superadmin_data.position = request.POST.get('position', superadmin_data.position)
+                superadmin_data.phone = request.POST.get('phone', superadmin_data.phone)
+                superadmin_data.is_active = request.POST.get('superadmin_active') == 'on'
+                superadmin_data.save()
+            
+            messages.success(request, f'User {user.get_full_name()} updated successfully!')
+            return redirect('manage-users')
+            
+        except Exception as e:
+            messages.error(request, f'Error updating user: {str(e)}')
+    
+    context = {
+        'edit_user': user,
+        'customer_data': customer_data,
+        'superadmin_data': superadmin_data,
+    }
+    
+    return render(request, 'ecom/edit_user.html', context)
     
     try:
         order = models.Orders.objects.get(id=order_id, status='Cancellation Requested')

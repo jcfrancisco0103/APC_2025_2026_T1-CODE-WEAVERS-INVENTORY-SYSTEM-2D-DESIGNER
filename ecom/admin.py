@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Customer, Product, Orders, Feedback, OrderItem, Address, ChatSession, ChatMessage, ChatbotKnowledge
+from .models import Customer, Product, Orders, Feedback, OrderItem, Address, ChatSession, ChatMessage, ChatbotKnowledge, SuperAdmin
 @admin.register(Address)
 class AddressAdmin(admin.ModelAdmin):
     list_display = ['region', 'province', 'city_municipality', 'barangay', 'street', 'postal_code']
@@ -135,7 +135,32 @@ class ChatbotKnowledgeAdmin(admin.ModelAdmin):
     search_fields = ['question', 'answer', 'keywords']
     readonly_fields = ['created_at', 'updated_at']
 
-# Customize Django Admin Site
+
+@admin.register(SuperAdmin)
+class SuperAdminAdmin(admin.ModelAdmin):
+    list_display = ['user', 'employee_id', 'department', 'position', 'is_active', 'created_at']
+    list_filter = ['department', 'is_active', 'created_at']
+    search_fields = ['user__username', 'user__first_name', 'user__last_name', 'employee_id', 'department', 'position']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    fieldsets = (
+        ('User Information', {
+            'fields': ('user', 'employee_id')
+        }),
+        ('Work Details', {
+            'fields': ('department', 'position', 'phone')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+# Customize admin site headers
 admin.site.site_header = "WorksTeamWear Administration"
 admin.site.site_title = "WorksTeamWear Admin Portal"
 admin.site.index_title = "Welcome to WorksTeamWear Administration"

@@ -1,0 +1,379 @@
+{% extends "ecom/admin_base.html" %}
+{% load static %}
+
+{% block title %}Edit User - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="page-title">Edit User: {{ user.username }}</h1>
+                    <p class="text-muted">Modify user information and permissions</p>
+                </div>
+                <div>
+                    <a href="{% url 'manage-users' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Users
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">User Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="close" data-dismiss="alert">
+                                    <span>&times;</span>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" id="editUserForm">
+                        {% csrf_token %}
+                        
+                        <!-- Basic User Information -->
+                        <div class="form-section">
+                            <h6 class="section-title">Basic Information</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="username">Username</label>
+                                        <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" readonly>
+                                        <small class="form-text text-muted">Username cannot be changed</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="email">Email</label>
+                                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="first_name">First Name</label>
+                                        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="last_name">Last Name</label>
+                                        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Customer Information (if applicable) -->
+                        {% if customer %}
+                        <div class="form-section">
+                            <h6 class="section-title">Customer Information</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="mobile">Mobile Number</label>
+                                        <input type="tel" class="form-control" id="mobile" name="mobile" value="{{ customer.mobile }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="address">Address</label>
+                                        <textarea class="form-control" id="address" name="address" rows="2">{{ customer.address }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- SuperAdmin Information (if applicable) -->
+                        {% if superadmin %}
+                        <div class="form-section">
+                            <h6 class="section-title">SuperAdmin Information</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="employee_id">Employee ID</label>
+                                        <input type="text" class="form-control" id="employee_id" name="employee_id" value="{{ superadmin.employee_id }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="phone">Phone Number</label>
+                                        <input type="tel" class="form-control" id="phone" name="phone" value="{{ superadmin.phone }}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="department">Department</label>
+                                        <select class="form-control" id="department" name="department">
+                                            <option value="">Select Department</option>
+                                            <option value="IT" {% if superadmin.department == "IT" %}selected{% endif %}>Information Technology</option>
+                                            <option value="HR" {% if superadmin.department == "HR" %}selected{% endif %}>Human Resources</option>
+                                            <option value="Finance" {% if superadmin.department == "Finance" %}selected{% endif %}>Finance</option>
+                                            <option value="Operations" {% if superadmin.department == "Operations" %}selected{% endif %}>Operations</option>
+                                            <option value="Marketing" {% if superadmin.department == "Marketing" %}selected{% endif %}>Marketing</option>
+                                            <option value="Sales" {% if superadmin.department == "Sales" %}selected{% endif %}>Sales</option>
+                                            <option value="Customer Service" {% if superadmin.department == "Customer Service" %}selected{% endif %}>Customer Service</option>
+                                            <option value="Management" {% if superadmin.department == "Management" %}selected{% endif %}>Management</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="position">Position</label>
+                                        <input type="text" class="form-control" id="position" name="position" value="{{ superadmin.position }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Permissions -->
+                        <div class="form-section">
+                            <h6 class="section-title">Permissions & Status</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if user.is_active %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_active">
+                                            Active Status
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="is_staff" name="is_staff" {% if user.is_staff %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_staff">
+                                            Staff Status
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="is_superuser" name="is_superuser" {% if user.is_superuser %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_superuser">
+                                            Superuser Status
+                                        </label>
+                                    </div>
+                                </div>
+                                {% if superadmin %}
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="superadmin_active" name="superadmin_active" {% if superadmin.is_active %}checked{% endif %}>
+                                        <label class="form-check-label" for="superadmin_active">
+                                            SuperAdmin Active Status
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Password Change -->
+                        <div class="form-section">
+                            <h6 class="section-title">Change Password</h6>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> Leave password fields empty if you don't want to change the password.
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="new_password">New Password</label>
+                                        <input type="password" class="form-control" id="new_password" name="new_password">
+                                        <small class="form-text text-muted">Minimum 8 characters</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="confirm_password">Confirm New Password</label>
+                                        <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                            <a href="{% url 'manage-users' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Info Sidebar -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">User Details</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">User ID:</dt>
+                        <dd class="col-sm-7">{{ user.id }}</dd>
+                        
+                        <dt class="col-sm-5">Username:</dt>
+                        <dd class="col-sm-7">{{ user.username }}</dd>
+                        
+                        <dt class="col-sm-5">User Type:</dt>
+                        <dd class="col-sm-7">
+                            {% if superadmin %}
+                                <span class="badge badge-danger">SuperAdmin</span>
+                            {% elif user.is_staff %}
+                                <span class="badge badge-warning">Staff</span>
+                            {% elif customer %}
+                                <span class="badge badge-info">Customer</span>
+                            {% else %}
+                                <span class="badge badge-secondary">User</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-5">Status:</dt>
+                        <dd class="col-sm-7">
+                            {% if user.is_active %}
+                                <span class="badge badge-success">Active</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inactive</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-5">Joined:</dt>
+                        <dd class="col-sm-7">{{ user.date_joined|date:"M d, Y" }}</dd>
+                        
+                        <dt class="col-sm-5">Last Login:</dt>
+                        <dd class="col-sm-7">
+                            {% if user.last_login %}
+                                {{ user.last_login|date:"M d, Y H:i" }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            {% if customer %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Customer Stats</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-6">Orders:</dt>
+                        <dd class="col-sm-6">{{ customer.orders.count }}</dd>
+                        
+                        <dt class="col-sm-6">Balance:</dt>
+                        <dd class="col-sm-6">${{ customer.balance|default:"0.00" }}</dd>
+                    </dl>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.section-title {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #007bff;
+    display: inline-block;
+}
+
+.form-actions {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e9ecef;
+}
+
+.form-check {
+    margin-bottom: 0.5rem;
+}
+
+.form-check-label {
+    font-weight: 500;
+}
+
+dl.row dt {
+    font-weight: 600;
+}
+
+dl.row dd {
+    margin-bottom: 0.5rem;
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    // Password confirmation validation
+    $('#confirm_password').on('keyup', function() {
+        var password = $('#new_password').val();
+        var confirmPassword = $(this).val();
+        
+        if (password && confirmPassword && password !== confirmPassword) {
+            $(this).addClass('is-invalid');
+            if (!$(this).next('.invalid-feedback').length) {
+                $(this).after('<div class="invalid-feedback">Passwords do not match</div>');
+            }
+        } else {
+            $(this).removeClass('is-invalid');
+            $(this).next('.invalid-feedback').remove();
+        }
+    });
+
+    // Form validation
+    $('#editUserForm').on('submit', function(e) {
+        var password = $('#new_password').val();
+        var confirmPassword = $('#confirm_password').val();
+        
+        if (password || confirmPassword) {
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                alert('Passwords do not match!');
+                return false;
+            }
+            
+            if (password.length < 8) {
+                e.preventDefault();
+                alert('Password must be at least 8 characters long!');
+                return false;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

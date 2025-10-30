@@ -602,5 +602,30 @@ class EmailVerification(models.Model):
         self.user.save()
 
 
+class SuperAdmin(models.Model):
+    """
+    SuperAdmin model for staff members who can manage users and access admin dashboard
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    employee_id = models.CharField(max_length=20, unique=True, help_text="Unique employee identifier")
+    department = models.CharField(max_length=100, blank=True, null=True)
+    position = models.CharField(max_length=100, blank=True, null=True)
+    phone = models.CharField(max_length=15, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        verbose_name = 'Super Admin'
+        verbose_name_plural = 'Super Admins'
+    
+    def __str__(self):
+        return f"SuperAdmin: {self.user.get_full_name() or self.user.username} ({self.employee_id})"
+    
+    @property
+    def full_name(self):
+        return self.user.get_full_name() or self.user.username
+
+
 
 

@@ -1,0 +1,263 @@
+{% extends "ecom/admin_base.html" %}
+{% load static %}
+
+{% block title %}SuperAdmin Dashboard{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="py-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">SuperAdmin Dashboard</h1>
+                        <p class="mt-1 text-sm text-gray-500">Manage users and system administration</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <a href="{% url 'manage-users' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                            <i data-lucide="users" class="mr-2 h-4 w-4"></i>
+                            Manage Users
+                        </a>
+                        <a href="{% url 'create-staff' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200">
+                            <i data-lucide="user-plus" class="mr-2 h-4 w-4"></i>
+                            Create Staff Account
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Users Card -->
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="users" class="h-6 w-6 text-blue-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <p class="text-sm font-medium text-gray-500">Total Users</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ total_users }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customers Card -->
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="user-check" class="h-6 w-6 text-green-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <p class="text-sm font-medium text-gray-500">Customers</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ total_customers }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staff Members Card -->
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="briefcase" class="h-6 w-6 text-yellow-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <p class="text-sm font-medium text-gray-500">Staff Members</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ total_staff }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SuperAdmins Card -->
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="shield-check" class="h-6 w-6 text-purple-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <p class="text-sm font-medium text-gray-500">SuperAdmins</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ total_superadmins }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Quick Actions</h3>
+                <p class="mt-1 text-sm text-gray-500">Frequently used administrative functions</p>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <a href="{% url 'manage-users' %}" class="group relative bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105">
+                        <div class="flex items-center">
+                            <i data-lucide="users-cog" class="h-8 w-8 mr-3"></i>
+                            <div>
+                                <h4 class="font-semibold">Manage Users</h4>
+                                <p class="text-sm opacity-90">View and edit users</p>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'create-staff' %}" class="group relative bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg text-white hover:from-green-600 hover:to-green-700 transition-all duration-200 transform hover:scale-105">
+                        <div class="flex items-center">
+                            <i data-lucide="user-plus" class="h-8 w-8 mr-3"></i>
+                            <div>
+                                <h4 class="font-semibold">Create Staff Account</h4>
+                                <p class="text-sm opacity-90">Add new staff member</p>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'admin-dashboard' %}" class="group relative bg-gradient-to-r from-indigo-500 to-indigo-600 p-6 rounded-lg text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105">
+                        <div class="flex items-center">
+                            <i data-lucide="layout-dashboard" class="h-8 w-8 mr-3"></i>
+                            <div>
+                                <h4 class="font-semibold">Admin Dashboard</h4>
+                                <p class="text-sm opacity-90">Regular admin panel</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Recent Users -->
+            <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Recent Users</h3>
+                    <p class="mt-1 text-sm text-gray-500">Latest user registrations</p>
+                </div>
+                <div class="overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for user in recent_users %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                                    <span class="text-sm font-medium text-gray-700">{{ user.username|first|upper }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">{{ user.username }}</div>
+                                                <div class="text-sm text-gray-500">{{ user.get_full_name|default:"-" }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ user.date_joined|date:"M d, Y" }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        {% if user.is_active %}
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                                        {% else %}
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500">No recent users found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent SuperAdmins -->
+            <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Recent SuperAdmins</h3>
+                    <p class="mt-1 text-sm text-gray-500">Latest SuperAdmin additions</p>
+                </div>
+                <div class="overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for superadmin in recent_superadmins %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                                                    <i data-lucide="shield-check" class="h-5 w-5 text-purple-600"></i>
+                                                </div>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">{{ superadmin.user.username }}</div>
+                                                <div class="text-sm text-gray-500">{{ superadmin.employee_id }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ superadmin.department|default:"-" }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        {% if superadmin.is_active %}
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                                        {% else %}
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500">No recent SuperAdmins found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+</script>
+{% endblock %}

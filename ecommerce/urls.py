@@ -39,6 +39,12 @@ urlpatterns = [
     path('adminlogin', LoginView.as_view(template_name='ecom/adminlogin.html'),name='adminlogin'),
     path('admin-dashboard', views.admin_dashboard_view,name='admin-dashboard'),
 
+    # SuperAdmin URLs
+    path('superadmin-dashboard/', views.superadmin_dashboard_view, name='superadmin-dashboard'),
+    path('manage-users/', views.manage_users_view, name='manage-users'),
+    path('create-staff/', views.create_staff_view, name='create-staff'),
+    path('edit-user/<int:user_id>/', views.edit_user_view, name='edit-user'),
+
     path('view-customer', views.admin_view_users,name='view-customer'),
 
     # Added URL pattern for update-user to fix NoReverseMatch

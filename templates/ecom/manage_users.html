@@ -1,0 +1,172 @@
+{% extends "ecom/admin_base.html" %}
+{% load static %}
+
+{% block title %}Manage Users{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="py-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">Manage Users</h1>
+                        <p class="mt-1 text-sm text-gray-500">View and manage all system users</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <a href="{% url 'create-staff' %}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200">
+                            <i data-lucide="user-plus" class="mr-2 h-4 w-4"></i>
+                            Create Staff Account
+                        </a>
+                        <a href="{% url 'superadmin-dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                            <i data-lucide="arrow-left" class="mr-2 h-4 w-4"></i>
+                            Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Filter Tabs -->
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Filter Users</h3>
+                <p class="mt-1 text-sm text-gray-500">Choose a category to filter users</p>
+            </div>
+            <div class="p-6">
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <a href="?filter=all" class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 {% if current_filter == 'all' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                        <i data-lucide="users" class="mr-2 h-4 w-4"></i>
+                        All Users
+                    </a>
+                    <a href="?filter=staff" class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 {% if current_filter == 'staff' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                        <i data-lucide="briefcase" class="mr-2 h-4 w-4"></i>
+                        Staff
+                    </a>
+                    <a href="?filter=superadmins" class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 {% if current_filter == 'superadmins' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                        <i data-lucide="shield-check" class="mr-2 h-4 w-4"></i>
+                        SuperAdmins
+                    </a>
+                </div>
+                <div class="text-sm text-gray-500">
+                    <i data-lucide="info" class="inline h-4 w-4 mr-1"></i>
+                    Showing {{ total_shown }} users
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Users List</h3>
+                <p class="mt-1 text-sm text-gray-500">Manage and view user information</p>
+            </div>
+            <div class="overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200" id="usersTable">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for user_data in users_data %}
+                            <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-12 w-12">
+                                            <div class="h-12 w-12 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-center">
+                                                <span class="text-lg font-semibold text-white">{{ user_data.user.username|first|upper }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">{{ user_data.user.username }}</div>
+                                            <div class="text-sm text-gray-500">{{ user_data.user.get_full_name|default:"-" }}</div>
+                                            <div class="text-xs text-gray-400">ID: {{ user_data.user.id }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ user_data.user.email|default:"-" }}</div>
+                                    <div class="text-sm text-gray-500">Email</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                    {% if user_data.is_superadmin %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <i data-lucide="shield-check" class="mr-1 h-3 w-3"></i>
+                            SuperAdmin
+                        </span>
+                    {% elif user_data.user.is_staff %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <i data-lucide="briefcase" class="mr-1 h-3 w-3"></i>
+                            Staff
+                        </span>
+                    {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            <i data-lucide="user" class="mr-1 h-3 w-3"></i>
+                            User
+                        </span>
+                    {% endif %}
+                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if user_data.user.is_active %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <div class="w-1.5 h-1.5 bg-green-400 rounded-full mr-1.5"></div>
+                                            Active
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            <div class="w-1.5 h-1.5 bg-red-400 rounded-full mr-1.5"></div>
+                                            Inactive
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ user_data.user.date_joined|date:"M d, Y" }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <a href="{% url 'edit-user' user_data.user.id %}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                        <i data-lucide="edit" class="mr-1 h-3 w-3"></i>
+                                        Edit
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center">
+                                    <div class="flex flex-col items-center">
+                                        <i data-lucide="users" class="h-12 w-12 text-gray-400 mb-4"></i>
+                                        <h3 class="text-sm font-medium text-gray-900 mb-1">No users found</h3>
+                                        <p class="text-sm text-gray-500">No users match the selected filter criteria.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+    
+    // Simple table search functionality (since we're avoiding jQuery)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add search functionality if needed
+        console.log('Manage Users page loaded successfully');
+    });
+</script>
+{% endblock %}
