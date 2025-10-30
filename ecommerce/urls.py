@@ -101,7 +101,6 @@ urlpatterns = [
     path('orders/to-receive/', views.to_receive_orders_view, name='to-receive-orders'),
     path('orders/delivered/', views.delivered_orders_view, name='delivered-orders'),
     path('orders/cancelled/', views.cancelled_orders_view, name='cancelled-orders'),
-    path('orders/waiting-for-cancellation/', views.waiting_for_cancellation_view, name='waiting-for-cancellation'),
     path('my-order', views.my_order_view, name='my-order'),
     path('my-order/<int:pk>', views.my_order_view_pk, name='my-order-pk'),
     path('my-profile', views.my_profile_view,name='my-profile'),

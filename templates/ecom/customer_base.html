@@ -451,13 +451,6 @@ body {
               </div>
               {% if to_receive_count %}<span class="status-badge receiving">{{ to_receive_count }}</span>{% endif %}
             </a>
-            <a class="dropdown-item" href="{% url 'waiting-for-cancellation' %}">
-              <div class="item-left">
-                <i class="fa fa-hourglass-half"></i>
-                <span>Waiting for Cancellation</span>
-              </div>
-              {% if waiting_cancellation_count %}<span class="status-badge waiting">{{ waiting_cancellation_count }}</span>{% endif %}
-            </a>
             <a class="dropdown-item" href="{% url 'cancelled-orders' %}">
               <div class="item-left">
                 <i class="fa fa-times-circle"></i>

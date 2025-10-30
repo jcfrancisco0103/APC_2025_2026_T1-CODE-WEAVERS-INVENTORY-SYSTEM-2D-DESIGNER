@@ -218,8 +218,9 @@ class Orders(models.Model):
             self.cancellation_status = 'requested'
             self.cancellation_reason = reason
             self.cancellation_requested_at = timezone.now()
-            self.status = 'Cancellation Requested'
-            self.status_updated_at = timezone.now()
+            # Keep the original status instead of changing to 'Cancellation Requested'
+            # self.status = 'Cancellation Requested'
+            # self.status_updated_at = timezone.now()
             self.save()
             return True
         return False
