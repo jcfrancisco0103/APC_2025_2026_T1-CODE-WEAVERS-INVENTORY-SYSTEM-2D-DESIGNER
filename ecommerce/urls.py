@@ -13,6 +13,7 @@ from ecom.views import admin_manage_inventory_view
 from ecom import api_views
 from ecom import chatbot_views
 from ecom import ai_views
+from ecom import email_verification as email_verification_views
 
 
 
@@ -79,6 +80,9 @@ urlpatterns = [
     path('admin-view-shipping-orders', views.admin_view_shipping_orders, name='admin-view-shipping-orders'),
     path('admin-view-delivered-orders', views.admin_view_delivered_orders, name='admin-view-delivered-orders'),
     path('admin-view-cancelled-orders', views.admin_view_cancelled_orders, name='admin-view-cancelled-orders'),
+    path('admin-view-cancellation-requests', views.admin_view_cancellation_requests, name='admin-view-cancellation-requests'),
+    path('approve-cancellation/<int:order_id>/', views.approve_cancellation_request, name='approve-cancellation'),
+    path('reject-cancellation/<int:order_id>/', views.reject_cancellation_request, name='reject-cancellation'),
     path('admin-view-pre-orders', views.admin_view_pre_orders, name='admin-view-pre-orders'),
     path('admin/orders/<int:order_id>/detail/', views.admin_order_detail_ajax, name='admin-order-detail-ajax'),
     path('delete-order/<int:pk>', views.delete_order_view,name='delete-order'),
@@ -97,6 +101,7 @@ urlpatterns = [
     path('orders/to-receive/', views.to_receive_orders_view, name='to-receive-orders'),
     path('orders/delivered/', views.delivered_orders_view, name='delivered-orders'),
     path('orders/cancelled/', views.cancelled_orders_view, name='cancelled-orders'),
+    path('orders/waiting-for-cancellation/', views.waiting_for_cancellation_view, name='waiting-for-cancellation'),
     path('my-order', views.my_order_view, name='my-order'),
     path('my-order/<int:pk>', views.my_order_view_pk, name='my-order-pk'),
     path('my-profile', views.my_profile_view,name='my-profile'),
@@ -110,7 +115,7 @@ urlpatterns = [
     path('customer-address', views.customer_address_view,name='customer-address'),
     path('payment-success/', views.payment_success_view,name='payment-success'),
     path('customizer/', views.jersey_customizer, name='customizer'),
-    path('react-tshirt-designer/', views.react_tshirt_designer, name='react_tshirt_designer'),
+    path('3d-designer/', views.react_tshirt_designer, name='react_tshirt_designer'),
     path('jersey-designer/', views.react_tshirt_designer, name='jersey-designer'),
     path('jersey-customizer/new/', views.jersey_customizer_new_view, name='jersey-customizer-new'),
 
@@ -191,6 +196,12 @@ urlpatterns = [
     path('api/ai/color-harmony/', ai_views.ai_color_harmony_recommend, name='ai-color-harmony'),
     path('api/ai/pattern-suggest/', ai_views.ai_jersey_pattern_suggest, name='ai-pattern-suggest'),
 
+    # Philippine Address API endpoints
+    path('api/regions/', api_views.get_regions, name='api-regions'),
+    path('api/provinces/', api_views.get_provinces, name='api-provinces'),
+    path('api/cities/', api_views.get_cities, name='api-cities'),
+    path('api/barangays/', api_views.get_barangays, name='api-barangays'),
+
     # API Welcome endpoint with logging
     path('api/welcome/', views.api_welcome, name='api-welcome'),
 
@@ -202,6 +213,12 @@ urlpatterns = [
 
     path('admin-reports', views.admin_report_view, name='admin-reports'),
     path('admin/customer-transactions/<int:customer_id>/', views.get_customer_transactions, name='customer-transactions'),
+    
+    # Email Verification URLs
+    path('verify-email/<uuid:token>/', email_verification_views.verify_email_view, name='verify_email'),
+    path('resend-verification/', email_verification_views.resend_verification_view, name='resend_verification'),
+    path('verification-required/', email_verification_views.verification_required_view, name='verification_required'),
+    path('api/check-verification-status/', email_verification_views.check_verification_status, name='check_verification_status'),
 ]
 
 if settings.DEBUG:

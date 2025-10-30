@@ -316,7 +316,7 @@ def customer_signup_view(request):
         if userForm.is_valid() and customerForm.is_valid():
             user = userForm.save(commit=False)
             user.set_password(userForm.cleaned_data['password'])
-            user.is_active = True  # User is active immediately after signup
+            user.is_active = False  # User needs email verification before activation
             user.save()
             
             customer = customerForm.save(commit=False)
@@ -326,8 +326,14 @@ def customer_signup_view(request):
             my_customer_group = Group.objects.get_or_create(name='CUSTOMER')
             my_customer_group[0].user_set.add(user)
             
-            messages.success(request, 'Registration successful! You can now log in.')
-            return redirect('customerlogin')
+            # Import and send verification email
+            from .email_verification import send_verification_email
+            if send_verification_email(user, request):
+                messages.success(request, 'Registration successful! Please check your email to verify your account before logging in.')
+                return redirect('verification_required')
+            else:
+                messages.error(request, 'Registration successful but failed to send verification email. Please contact support.')
+                return redirect('customerlogin')
         else:
             # Show errors in the template
             mydict = {'userForm': userForm, 'customerForm': customerForm}
@@ -363,6 +369,7 @@ def multi_step_signup_view(request, step=1):
                 # Store step 2 data in session
                 request.session['signup_data']['step2'] = {
                     'username': form.cleaned_data['username'],
+                    'email': form.cleaned_data['email'],
                     'password': form.cleaned_data['password'],
                     'privacy_policy': form.cleaned_data['privacy_policy'],
                 }
@@ -390,10 +397,11 @@ def multi_step_signup_view(request, step=1):
                     # Create User
                     user = User.objects.create_user(
                         username=signup_data['step2']['username'],
+                        email=signup_data['step2']['email'],
                         password=signup_data['step2']['password'],
                         first_name=signup_data['step1']['first_name'],
                         last_name=signup_data['step1']['last_name'],
-                        is_active=True
+                        is_active=False  # Set to False until email is verified
                     )
                     
                     # Create Customer
@@ -412,12 +420,19 @@ def multi_step_signup_view(request, step=1):
                     my_customer_group = Group.objects.get_or_create(name='CUSTOMER')
                     my_customer_group[0].user_set.add(user)
                     
-                    # Clear session data
-                    del request.session['signup_data']
-                    request.session.modified = True
-                    
-                    messages.success(request, 'Registration successful! You can now log in.')
-                    return redirect('customerlogin')
+                    # Send verification email
+                    from .email_verification import send_verification_email
+                    try:
+                        send_verification_email(user, request)
+                        # Clear session data
+                        del request.session['signup_data']
+                        request.session.modified = True
+                        
+                        messages.success(request, 'Registration successful! Please check your email to verify your account.')
+                        return redirect('verification_required')
+                    except Exception as email_error:
+                        messages.error(request, f'Registration completed but failed to send verification email: {str(email_error)}')
+                        return redirect('verification_required')
                     
                 except Exception as e:
                     messages.error(request, f'Registration failed: {str(e)}')
@@ -1630,6 +1645,66 @@ def cancelled_orders_view(request):
         })
     return render(request, 'ecom/order_status_page.html', {'orders_with_items': orders_with_items, 'status': 'Cancelled', 'title': 'Cancelled Orders'})
 
+@login_required(login_url='customerlogin')
+def waiting_for_cancellation_view(request):
+    try:
+        customer = models.Customer.objects.get(user_id=request.user.id)
+    except models.Customer.DoesNotExist:
+        messages.error(request, 'Customer profile not found. Please contact support.')
+        return redirect('customer-home')
+    
+    orders = models.Orders.objects.filter(customer=customer, cancellation_status='requested').order_by('-status_updated_at')
+    orders_with_items = []
+    for order in orders:
+        # Get regular order items
+        order_items = models.OrderItem.objects.filter(order=order)
+        products = []
+        total = Decimal('0.00')
+        for item in order_items:
+            # Use VAT-inclusive calculation (same as cart)
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            products.append({
+                'item': item,
+                'size': item.size,
+                'quantity': item.quantity,
+                'line_total': line_total,
+            })
+
+        # Get custom order items
+        custom_order_items = models.CustomOrderItem.objects.filter(order=order)
+        custom_items = []
+        for item in custom_order_items:
+            # Use VAT-inclusive calculation (same as cart)
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            custom_items.append({
+                'custom_item': item,
+                'size': item.size,
+                'quantity': item.quantity,
+                'price': item.price,
+                'line_total': line_total,
+            })
+        
+        # Calculate VAT using same method as cart (VAT-inclusive)
+        vat_amount = total * Decimal(12) / Decimal(112)
+        net_subtotal = total - vat_amount
+        # Use stored delivery fee from order
+        delivery_fee = order.delivery_fee
+        grand_total = total + Decimal(delivery_fee)
+        
+        orders_with_items.append({
+            'order': order,
+            'products': products,
+            'custom_items': custom_items,
+            'total': total,
+            'net_subtotal': net_subtotal,
+            'vat_amount': vat_amount,
+            'delivery_fee': delivery_fee,
+            'grand_total': grand_total,
+        })
+    return render(request, 'ecom/order_status_page.html', {'orders_with_items': orders_with_items, 'status': 'Waiting for Cancellation', 'title': 'Waiting for Cancellation'})
+
 def cart_page(request):
     user = request.user
     cart_items = cart_items.objects.filter(user=user)
@@ -2196,6 +2271,13 @@ def payment_success_view(request):
     
     products = []
     payment_method = request.GET.get('method', 'cod')  # Default to COD if not specified
+    
+    # Get transaction ID for PayPal and GCash payments
+    transaction_id = None
+    if payment_method == 'paypal':
+        transaction_id = request.GET.get('paymentId')
+    elif payment_method == 'gcash':
+        transaction_id = request.GET.get('transactionId') or request.GET.get('transaction_id')
 
     if 'product_ids' in request.COOKIES:
         product_ids = request.COOKIES['product_ids']
@@ -2243,6 +2325,7 @@ def payment_success_view(request):
         mobile=mobile,
         address=address,
         payment_method=payment_method,
+        transaction_id=transaction_id,
         order_date=timezone.now(),
         status_updated_at=timezone.now(),
         notes=f"Order Group ID: {order_ref}",
@@ -2451,27 +2534,63 @@ def place_order(request):
 @login_required(login_url='customerlogin')
 @user_passes_test(is_customer)
 def cancel_order_view(request, order_id):
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('my-order')
+    
     try:
         customer = models.Customer.objects.get(user_id=request.user.id)
         order = models.Orders.objects.get(id=order_id, customer=customer)
-        if order.status == 'Pending':
+        
+        # Check if order can be cancelled
+        if not order.can_request_cancellation():
+            messages.error(request, 'Order cannot be cancelled at this time.')
+            return redirect('my-order')
+        
+        # Get cancellation reason from form
+        cancel_reason = request.POST.get('cancel_reason', '')
+        other_reason = request.POST.get('other_reason', '')
+        
+        # Combine reasons if "Other" was selected
+        if cancel_reason == 'Other' and other_reason:
+            final_reason = f"Other: {other_reason}"
+        else:
+            final_reason = cancel_reason
+        
+        if not final_reason:
+            messages.error(request, 'Please provide a reason for cancellation.')
+            return redirect('my-order')
+        
+        # For COD orders, immediately cancel (no payment to refund)
+        if order.payment_method == 'cod':
             # Restore stock for each item in the order
             order_items = models.OrderItem.objects.filter(order=order)
             for item in order_items:
                 product = item.product
                 product.quantity += item.quantity
                 product.save()
+            
             order.status = 'Cancelled'
             order.status_updated_at = timezone.now()
+            order.cancellation_reason = final_reason
             order.save()
             messages.success(request, 'Order cancelled successfully!')
         else:
-            messages.error(request, 'Order cannot be cancelled at this time.')
+            # For paid orders (PayPal/GCash), request cancellation approval
+            success = order.request_cancellation(final_reason, request.user)
+            if success:
+                messages.success(request, 'Cancellation request submitted successfully! Your request is now waiting for Super Admin approval. You will be notified once a decision is made.')
+            else:
+                messages.error(request, 'Unable to process cancellation request. Please try again.')
+        
     except models.Orders.DoesNotExist:
         messages.error(request, 'Order not found.')
     except models.Customer.DoesNotExist:
         messages.error(request, 'Customer not found.')
-    return redirect('cancelled-orders')
+    except Exception as e:
+        messages.error(request, f'An error occurred: {str(e)}')
+    
+    return redirect('my-order')
 
 
 
@@ -3815,50 +3934,107 @@ def save_tshirt_design(request):
     return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
 
 @csrf_exempt
-@login_required(login_url='customerlogin')
-@user_passes_test(is_customer)
 def add_custom_tshirt_to_cart(request):
     if request.method == 'POST':
+        # Check if user is authenticated
+        if not request.user.is_authenticated:
+            return JsonResponse({
+                'success': False,
+                'message': 'Please log in to add items to cart',
+                'redirect': '/customerlogin'
+            }, status=401)
+        
+        # Check if user is a customer
+        try:
+            customer = models.Customer.objects.get(user_id=request.user.id)
+        except models.Customer.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Customer account not found',
+                'redirect': '/customerlogin'
+            }, status=403)
+        
         try:
             data = json.loads(request.body)
-            customer = models.Customer.objects.get(user_id=request.user.id)
             
-            # Get or create a pending cart order
-            cart_order, created = models.Orders.objects.get_or_create(
+            # Handle multiple pending orders by getting the most recent one or creating a new one
+            try:
+                # Try to get the most recent pending order
+                cart_order = models.Orders.objects.filter(
+                    customer=customer,
+                    status='Pending'
+                ).order_by('-id').first()
+                
+                if cart_order:
+                    created = False
+                else:
+                    # Create new cart order if none exists
+                    cart_order = models.Orders.objects.create(
+                        customer=customer,
+                        status='Pending',
+                        order_ref=f'CART-{customer.id}-{timezone.now().strftime("%Y%m%d%H%M%S")}',
+                    )
+                    created = True
+            except Exception as e:
+                # Fallback: create a new order
+                cart_order = models.Orders.objects.create(
+                    customer=customer,
+                    status='Pending',
+                    order_ref=f'CART-{customer.id}-{timezone.now().strftime("%Y%m%d%H%M%S")}',
+                )
+                created = True
+            
+            # First create a CustomJerseyDesign object
+            custom_design = models.CustomJerseyDesign.objects.create(
                 customer=customer,
-                status='Pending',
-                defaults={
-                    'order_ref': f'CART-{customer.id}-{timezone.now().strftime("%Y%m%d%H%M%S")}',
-                    'total_amount': 0
-                }
+                jersey_type=data.get('jersey_type', 'jersey'),  # Changed default to jersey
+                collar_type=data.get('collar_type', 'crew_neck'),  # Changed default to crew_neck
+                sleeve_type=data.get('sleeve_type', 'short_sleeve'),  # Added to fix NOT NULL constraint
+                design_scale=data.get('design_scale', 1.0),  # Added to fix NOT NULL constraint
+                fabric_type=data.get('fabric_type', 'polyester'),  # Added to fix NOT NULL constraint
+                is_3d_design=data.get('is_3d_design', False),  # Added to fix NOT NULL constraint
+                logo_position_3d=data.get('logo_position_3d', {}),  # Added to fix NOT NULL constraint
+                text_position_3d=data.get('text_position_3d', {}),  # Added to fix NOT NULL constraint
+                primary_color=data.get('primary_color', '#000000'),
+                secondary_color=data.get('secondary_color', '#ffffff'),
+                pattern=data.get('pattern', 'solid'),
+                front_number=data.get('front_number', ''),
+                back_name=data.get('back_name', ''),
+                back_number=data.get('back_number', ''),
+                text_color=data.get('text_color', '#000000'),
+                logo_placement=data.get('logo_placement', 'none'),
+                design_data=data.get('design_data', {})
             )
             
-            # Create custom order item
+            # Create custom order item with correct fields
             custom_item = models.CustomOrderItem.objects.create(
                 order=cart_order,
-                design_name=data.get('design_name', 'Custom T-Shirt'),
-                design_data=json.dumps(data.get('design_data', {})),
-                preview_image=data.get('preview_image', ''),
+                custom_design=custom_design,
                 quantity=data.get('quantity', 1),
-                unit_price=data.get('price', 25.00),
                 size=data.get('size', 'M'),
-                color=data.get('color', 'White')
+                price=data.get('unit_price', 899.00),
+                additional_info=data.get('additional_info', ''),
+                is_pre_order=False
             )
             
-            # Update cart total
-            cart_order.total_amount += custom_item.unit_price * custom_item.quantity
-            cart_order.save()
+            # Note: Total amount is calculated dynamically via get_total_amount() method
+            # No need to update a total_amount field as it doesn't exist
             
             return JsonResponse({
                 'success': True,
                 'message': 'Custom t-shirt added to cart successfully',
                 'cart_item_id': custom_item.id
             })
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid JSON data'
+            }, status=400)
         except Exception as e:
             return JsonResponse({
                 'success': False,
                 'message': str(e)
-            }, status=400)
+            }, status=500)
     
     return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
 
@@ -4738,5 +4914,162 @@ def remove_custom_item_view(request, pk):
         return JsonResponse({'status': 'error', 'message': 'Customer profile not found'}, status=404)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@admin_required
+def admin_view_cancellation_requests(request):
+    """
+    Admin view to manage cancellation requests that need approval
+    """
+    # Get all orders with cancellation requests
+    cancellation_requests = models.Orders.objects.filter(
+        status='Cancellation Requested'
+    ).select_related('customer__user').order_by('-cancellation_requested_at')
+    
+    # Calculate counts
+    total_requests = cancellation_requests.count()
+    paypal_requests = cancellation_requests.filter(payment_method='paypal').count()
+    gcash_requests = cancellation_requests.filter(payment_method='gcash').count()
+    cod_requests = cancellation_requests.filter(payment_method='cod').count()
+    
+    # Prepare request data
+    requests_data = []
+    for order in cancellation_requests:
+        customer_name = f"{order.customer.user.first_name} {order.customer.user.last_name}" if order.customer and order.customer.user else 'Unknown'
+        total_amount = float(order.get_total_amount())
+        
+        requests_data.append({
+            'order': order,
+            'customer_name': customer_name,
+            'total_amount': total_amount,
+            'days_pending': (timezone.now() - order.cancellation_requested_at).days if order.cancellation_requested_at else 0,
+        })
+    
+    context = {
+        'requests_data': requests_data,
+        'total_requests': total_requests,
+        'paypal_requests': paypal_requests,
+        'gcash_requests': gcash_requests,
+        'cod_requests': cod_requests,
+    }
+    
+    return render(request, 'ecom/admin_cancellation_requests.html', context)
+
+
+@admin_required
+def approve_cancellation_request(request, order_id):
+    """
+    Approve a cancellation request and process refund if applicable
+    """
+    if request.method != 'POST':
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
+        messages.error(request, 'Invalid request method.')
+        return redirect('admin-view-cancellation-requests')
+    
+    try:
+        order = models.Orders.objects.get(id=order_id, status='Cancellation Requested')
+        admin_notes = request.POST.get('admin_notes', '')
+        
+        # Approve the cancellation
+        success = order.approve_cancellation(request.user, admin_notes)
+        
+        if success:
+            # Process refund for paid orders
+            if order.is_paid_order():
+                from .refund_utils import process_order_refund
+                refund_success, refund_message = process_order_refund(order, request.user)
+                
+                if refund_success:
+                    message = f'Cancellation request for Order #{order.id} has been approved and refund has been processed successfully! {refund_message}'
+                    if request.headers.get('Content-Type') == 'application/json':
+                        return JsonResponse({'status': 'success', 'message': message})
+                    messages.success(request, message)
+                else:
+                    message = f'Cancellation request for Order #{order.id} has been approved, but refund processing failed: {refund_message}. Please process the refund manually.'
+                    if request.headers.get('Content-Type') == 'application/json':
+                        return JsonResponse({'status': 'warning', 'message': message})
+                    messages.warning(request, message)
+            else:
+                message = f'Cancellation request for Order #{order.id} has been approved successfully!'
+                if request.headers.get('Content-Type') == 'application/json':
+                    return JsonResponse({'status': 'success', 'message': message})
+                messages.success(request, message)
+        else:
+            message = 'Failed to approve cancellation request.'
+            if request.headers.get('Content-Type') == 'application/json':
+                return JsonResponse({'status': 'error', 'message': message})
+            messages.error(request, message)
+            
+    except models.Orders.DoesNotExist:
+        message = 'Cancellation request not found.'
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'status': 'error', 'message': message})
+        messages.error(request, message)
+    except Exception as e:
+        message = f'An error occurred: {str(e)}'
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'status': 'error', 'message': message})
+        messages.error(request, message)
+    
+    return redirect('admin-view-cancellation-requests')
+
+
+@admin_required
+def reject_cancellation_request(request, order_id):
+    """
+    Reject a cancellation request
+    """
+    if request.method != 'POST':
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
+        messages.error(request, 'Invalid request method.')
+        return redirect('admin-view-cancellation-requests')
+    
+    try:
+        order = models.Orders.objects.get(id=order_id, status='Cancellation Requested')
+        
+        # Get admin notes from JSON body or POST data
+        admin_notes = ''
+        if request.headers.get('Content-Type') == 'application/json':
+            import json
+            data = json.loads(request.body)
+            admin_notes = data.get('rejection_reason', '')
+        else:
+            admin_notes = request.POST.get('admin_notes', '')
+        
+        if not admin_notes:
+            message = 'Please provide a reason for rejection.'
+            if request.headers.get('Content-Type') == 'application/json':
+                return JsonResponse({'status': 'error', 'message': message})
+            messages.error(request, message)
+            return redirect('admin-view-cancellation-requests')
+        
+        # Reject the cancellation
+        success = order.reject_cancellation(request.user, admin_notes)
+        
+        if success:
+            message = f'Cancellation request for Order #{order.id} has been rejected.'
+            if request.headers.get('Content-Type') == 'application/json':
+                return JsonResponse({'status': 'success', 'message': message})
+            messages.success(request, message)
+        else:
+            message = 'Failed to reject cancellation request.'
+            if request.headers.get('Content-Type') == 'application/json':
+                return JsonResponse({'status': 'error', 'message': message})
+            messages.error(request, message)
+            
+    except models.Orders.DoesNotExist:
+        message = 'Cancellation request not found.'
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'status': 'error', 'message': message})
+        messages.error(request, message)
+    except Exception as e:
+        message = f'An error occurred: {str(e)}'
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'status': 'error', 'message': message})
+        messages.error(request, message)
+    
+    return redirect('admin-view-cancellation-requests')
 
 

@@ -1,0 +1,353 @@
+{% extends 'ecom/admin_base.html' %}
+{% load static %}
+{% load humanize %}
+{% load custom_filters %}
+{% block content %}
+
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Cancellation Requests</h1>
+    <p class="text-gray-600">Review and approve customer cancellation requests</p>
+</div>
+
+<!-- Status Card -->
+<div class="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    <div class="bg-white rounded-lg shadow p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-500">Pending Requests</p>
+                <p class="text-2xl font-bold text-gray-900">{{ orders_data|length }}</p>
+            </div>
+            <i data-lucide="clock" class="h-8 w-8 text-orange-500"></i>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">Awaiting approval</p>
+    </div>
+</div>
+
+<!-- Orders Table -->
+<div class="bg-white shadow rounded-lg">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+            <h2 class="text-lg font-medium text-gray-900">Cancellation Requests</h2>
+        </div>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for order_data in orders_data %}
+                {% with order=order_data.order customer=order_data.customer %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">{{ order_data.order_id }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ order_data.order_date }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">{{ customer.get_name }}</div>
+                        <div class="text-sm text-gray-500">{{ customer.mobile }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                            {% if order.payment_method == 'PayPal' %}bg-blue-100 text-blue-800
+                            {% elif order.payment_method == 'GCash' %}bg-green-100 text-green-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ order.payment_method }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">₱{{ order_data.total_price|floatformat:2 }}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900 max-w-xs">
+                            <strong>{{ order.cancellation_reason }}</strong>
+                            {% if order.cancellation_other_reason %}
+                                <br><span class="text-gray-600">{{ order.cancellation_other_reason }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ order.cancellation_requested_at|date:"M d, Y" }}</div>
+                        <div class="text-sm text-gray-500">{{ order.cancellation_requested_at|time:"g:i A" }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div class="flex space-x-2">
+                            <!-- View Details Button -->
+                            <button onclick="openOrderDetail('{{ order.id }}')" class="inline-block text-blue-600 hover:text-blue-900" title="View Order Details">
+                                <i data-lucide="eye" class="h-4 w-4"></i>
+                            </button>
+                            
+                            <!-- Approve Button -->
+                            <button onclick="approveCancellation('{{ order.id }}', '{{ order_data.order_id }}', '{{ customer.get_name }}', '{{ order_data.total_price|floatformat:2 }}')" 
+                                    class="inline-block text-green-600 hover:text-green-900" title="Approve Cancellation">
+                                <i data-lucide="check-circle" class="h-4 w-4"></i>
+                            </button>
+                            
+                            <!-- Reject Button -->
+                            <button onclick="rejectCancellation('{{ order.id }}', '{{ order_data.order_id }}', '{{ customer.get_name }}')" 
+                                    class="inline-block text-red-600 hover:text-red-900" title="Reject Cancellation">
+                                <i data-lucide="x-circle" class="h-4 w-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endwith %}
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="px-6 py-12 text-center">
+                        <div class="text-gray-500">
+                            <i data-lucide="clock" class="h-12 w-12 mx-auto mb-4 text-gray-300"></i>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No cancellation requests</h3>
+                            <p class="text-sm">There are currently no pending cancellation requests.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Approve Cancellation Modal -->
+<div id="approveCancellationModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black opacity-50"></div>
+        <div class="relative bg-white rounded-lg max-w-md w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Approve Cancellation</h3>
+                <button onclick="closeApproveModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <p class="text-sm text-gray-600">Are you sure you want to approve the cancellation for:</p>
+                <div class="mt-2 p-3 bg-gray-50 rounded">
+                    <p><strong>Order ID:</strong> <span id="approveOrderId"></span></p>
+                    <p><strong>Customer:</strong> <span id="approveCustomerName"></span></p>
+                    <p><strong>Refund Amount:</strong> ₱<span id="approveAmount"></span></p>
+                </div>
+                <p class="mt-2 text-sm text-red-600">
+                    <i data-lucide="alert-triangle" class="h-4 w-4 inline mr-1"></i>
+                    This will process the refund and cannot be undone.
+                </p>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeApproveModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                    Cancel
+                </button>
+                <button onclick="confirmApprove()" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+                    Approve Cancellation
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Cancellation Modal -->
+<div id="rejectCancellationModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black opacity-50"></div>
+        <div class="relative bg-white rounded-lg max-w-md w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Reject Cancellation</h3>
+                <button onclick="closeRejectModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <form id="rejectForm" method="post">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600">Rejecting cancellation for:</p>
+                    <div class="mt-2 p-3 bg-gray-50 rounded">
+                        <p><strong>Order ID:</strong> <span id="rejectOrderId"></span></p>
+                        <p><strong>Customer:</strong> <span id="rejectCustomerName"></span></p>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="rejection_reason" class="block text-sm font-medium text-gray-700 mb-2">
+                        Reason for rejection <span class="text-red-500">*</span>
+                    </label>
+                    <textarea name="rejection_reason" id="rejection_reason" rows="3" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
+                              placeholder="Please provide a reason for rejecting this cancellation request..." required></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeRejectModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
+                        Reject Cancellation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Order Detail Modal (reuse from admin_view_orders.html) -->
+<div id="orderDetailModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black opacity-50"></div>
+        <div class="relative bg-white rounded-lg max-w-4xl w-full p-6 max-h-screen overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Order Details</h3>
+                <button onclick="closeOrderDetail()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            <div id="orderDetailContent">
+                <!-- Content will be loaded via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentOrderId = null;
+
+function approveCancellation(orderId, orderIdDisplay, customerName, amount) {
+    currentOrderId = orderId;
+    document.getElementById('approveOrderId').textContent = orderIdDisplay;
+    document.getElementById('approveCustomerName').textContent = customerName;
+    document.getElementById('approveAmount').textContent = amount;
+    document.getElementById('approveCancellationModal').classList.remove('hidden');
+}
+
+function closeApproveModal() {
+    document.getElementById('approveCancellationModal').classList.add('hidden');
+    currentOrderId = null;
+}
+
+function confirmApprove() {
+    if (currentOrderId) {
+        fetch(`/approve-cancellation/${currentOrderId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.message || 'An error occurred');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while processing the request');
+        });
+        closeApproveModal();
+    }
+}
+
+function rejectCancellation(orderId, orderIdDisplay, customerName) {
+    currentOrderId = orderId;
+    document.getElementById('rejectOrderId').textContent = orderIdDisplay;
+    document.getElementById('rejectCustomerName').textContent = customerName;
+    document.getElementById('rejectForm').action = `/reject-cancellation/${orderId}/`;
+    document.getElementById('rejectCancellationModal').classList.remove('hidden');
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectCancellationModal').classList.add('hidden');
+    document.getElementById('rejection_reason').value = '';
+    currentOrderId = null;
+}
+
+function openOrderDetail(orderId) {
+    fetch(`/admin/orders/${orderId}/detail/`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('orderDetailContent').innerHTML = html;
+            document.getElementById('orderDetailModal').classList.remove('hidden');
+        })
+        .catch(error => {
+            console.error('Error loading order details:', error);
+            alert('Error loading order details. Please try again.');
+        });
+}
+
+function closeOrderDetail() {
+    document.getElementById('orderDetailModal').classList.add('hidden');
+}
+
+// Close modals when clicking outside
+document.addEventListener('click', function(event) {
+    const approveModal = document.getElementById('approveCancellationModal');
+    const rejectModal = document.getElementById('rejectCancellationModal');
+    const orderModal = document.getElementById('orderDetailModal');
+    
+    if (event.target === approveModal) {
+        closeApproveModal();
+    }
+    if (event.target === rejectModal) {
+        closeRejectModal();
+    }
+    if (event.target === orderModal) {
+        closeOrderDetail();
+    }
+});
+
+// Handle reject form submission via AJAX
+document.getElementById('rejectForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const rejectionReason = formData.get('rejection_reason');
+    
+    if (!rejectionReason.trim()) {
+        alert('Please provide a reason for rejection.');
+        return;
+    }
+    
+    fetch(this.action, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+        },
+        body: JSON.stringify({
+            rejection_reason: rejectionReason
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message || 'An error occurred');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while processing the request');
+    });
+    
+    closeRejectModal();
+});
+</script>
+
+{% endblock %}

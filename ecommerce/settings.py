@@ -147,22 +147,28 @@ LOGIN_URL = '/customerlogin'
 LOGOUT_REDIRECT_URL = '/customerlogin'
 
 #for contact us give your gmail id and password
-# For development: Use console backend to see emails in terminal
-if DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-else:
-    EMAIL_BACKEND ='django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = 'smtp.gmail.com'
-    EMAIL_USE_TLS = True
-    EMAIL_PORT = 587
-    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='from@gmail.com') # this email will be used to send emails
-    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='xyz') # host email password required
-    # now sign in with your host gmail account in your browser
-    # open following link and turn it ON
-    # https://myaccount.google.com/lesssecureapps
-    # otherwise you will get SMTPAuthenticationError at /contactus
-    # this process is required because google blocks apps authentication by default
-EMAIL_RECEIVING_USER = [config('EMAIL_RECEIVING_USER', default='to@gmail.com')] # email on which you will receive messages sent from website
+# Email configuration - Use SMTP for actual email sending
+EMAIL_BACKEND ='django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='mersyeon123@gmail.com') # this email will be used to send emails
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your-app-password') # Gmail App Password (NOT regular password)
+
+# For development testing only - uncomment the line below to use console backend
+# if DEBUG:
+#     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# now sign in with your host gmail account in your browser
+# open following link and turn it ON
+# https://myaccount.google.com/lesssecureapps
+# otherwise you will get SMTPAuthenticationError at /contactus
+# this process is required because google blocks apps authentication by default
+
+# Default from email for all outgoing emails
+DEFAULT_FROM_EMAIL = config('EMAIL_HOST_USER', default='mersyeon123@gmail.com')
+
+EMAIL_RECEIVING_USER = [config('EMAIL_RECEIVING_USER', default='merss0103@gmail.com')] # email on which you will receive messages sent from website
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

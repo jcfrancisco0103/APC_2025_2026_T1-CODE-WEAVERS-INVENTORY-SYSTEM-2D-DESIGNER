@@ -453,10 +453,9 @@
                 </div>
                 <div class="form-group">
                   <label for="barangay">Barangay</label>
-                  <select name="barangay_select" id="barangay" class="form-control" required>
+                  <select name="barangay" id="barangay" class="form-control" required>
                     <option value="" disabled selected>Select Barangay</option>
                   </select>
-                  {% render_field form.barangay %}
                 </div>
               </div>
 
@@ -483,6 +482,27 @@
             <script src="{% static 'js/ph-address-cascade-api.js' %}"></script>
             <script>
               document.addEventListener('DOMContentLoaded', function() {
+                // PSGC to Django region code mapping
+                const regionCodeMap = {
+                  '010000000': 'R1',   // Ilocos Region
+                  '020000000': 'R2',   // Cagayan Valley
+                  '030000000': 'R3',   // Central Luzon
+                  '040000000': 'R4A',  // CALABARZON
+                  '170000000': 'R4B',  // MIMAROPA
+                  '050000000': 'R5',   // Bicol Region
+                  '060000000': 'R6',   // Western Visayas
+                  '070000000': 'R7',   // Central Visayas
+                  '080000000': 'R8',   // Eastern Visayas
+                  '090000000': 'R9',   // Zamboanga Peninsula
+                  '100000000': 'R10',  // Northern Mindanao
+                  '110000000': 'R11',  // Davao Region
+                  '120000000': 'R12',  // SOCCSKSARGEN
+                  '130000000': 'NCR',  // National Capital Region
+                  '140000000': 'CAR',  // Cordillera Administrative Region
+                  '160000000': 'R13',  // Caraga
+                  '150000000': 'BARMM' // Bangsamoro Autonomous Region in Muslim Mindanao
+                };
+
                 // Initialize the address cascade API
                 window.initPHAddressCascadeAPI({
                   region: 'region',
@@ -493,20 +513,88 @@
 
                 // Enable the Create Account button only if all address fields are selected
                 var submitBtn = document.getElementById('createAccountBtn');
-                var region = document.getElementById('region');
+                var regionSelect = document.getElementById('region');
                 var province = document.getElementById('province');
                 var citymun = document.getElementById('citymun');
                 var barangay = document.getElementById('barangay');
 
-                function checkEnable() {
-                  var allSelected = region.value && province.value && citymun.value && barangay.value;
-                  submitBtn.disabled = !allSelected;
+                function getMappedRegionCode() {
+                  let psaCode = regionSelect.value;
+                  if (psaCode.length > 9) psaCode = psaCode.slice(0, 9);
+                  return regionCodeMap[psaCode] || '';
                 }
 
-                [region, province, citymun, barangay].forEach(function(sel) {
+                function checkEnable() {
+                  var mappedRegion = getMappedRegionCode();
+                  var allSelected;
+                  
+                  // For NCR, province is not required
+                  if (mappedRegion === 'NCR') {
+                    allSelected = regionSelect.value && citymun.value && barangay.value;
+                  } else {
+                    allSelected = regionSelect.value && province.value && citymun.value && barangay.value;
+                  }
+                  
+                  submitBtn.disabled = !(allSelected && mappedRegion);
+                }
+
+                // Handle region change to show/hide province field
+                if (regionSelect) {
+                  regionSelect.addEventListener('change', function() {
+                    let mapped = getMappedRegionCode();
+                    this.setAttribute('data-django-code', mapped);
+                    
+                    // Hide/show province field based on region selection
+                    const provinceGroup = document.getElementById('province-group');
+                    const provinceSelect = document.getElementById('province');
+                    
+                    if (mapped === 'NCR') {
+                      // Hide province field for NCR
+                      provinceGroup.style.display = 'none';
+                      provinceSelect.removeAttribute('required');
+                      provinceSelect.value = 'NCR'; // Set a default value
+                    } else {
+                      // Show province field for other regions
+                      provinceGroup.style.display = 'block';
+                      provinceSelect.setAttribute('required', 'required');
+                    }
+                    
+                    checkEnable();
+                  });
+                }
+
+                [province, citymun, barangay].forEach(function(sel) {
                   if (sel) sel.addEventListener('change', checkEnable);
                 });
                 checkEnable(); // Initial check
+
+                // On form submit, set region value to Django code using a hidden input
+                const form = document.querySelector('form');
+                let hiddenRegionInput = document.getElementById('region_django_code');
+                if (!hiddenRegionInput) {
+                  hiddenRegionInput = document.createElement('input');
+                  hiddenRegionInput.type = 'hidden';
+                  hiddenRegionInput.name = 'region';
+                  hiddenRegionInput.id = 'region_django_code';
+                  form.appendChild(hiddenRegionInput);
+                }
+                if (form && regionSelect) {
+                  form.addEventListener('submit', function(e) {
+                    let mapped = getMappedRegionCode();
+                    if (mapped) {
+                      hiddenRegionInput.value = mapped;
+                      
+                      // For NCR, ensure province is set to 'NCR' in the form data
+                      if (mapped === 'NCR') {
+                        const provinceSelect = document.getElementById('province');
+                        provinceSelect.value = 'NCR';
+                      }
+                    } else {
+                      e.preventDefault();
+                      alert('Invalid region selected. Please select a valid region.');
+                    }
+                  });
+                }
               });
             </script>
           </div>

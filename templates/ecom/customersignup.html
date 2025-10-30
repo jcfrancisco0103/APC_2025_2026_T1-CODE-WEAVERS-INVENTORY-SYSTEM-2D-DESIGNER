@@ -512,6 +512,12 @@
                   <label for="{{ userForm.username.id_for_label }}">Username</label>
                   {% render_field userForm.username class="form-control" placeholder="Username" %}
                 </div>
+
+                <!-- Email -->
+                <div class="form-group">
+                  <label for="{{ userForm.email.id_for_label }}">Email Address</label>
+                  {% render_field userForm.email class="form-control" placeholder="Email Address" %}
+                </div>
  
                 <!-- Account Security -->
                 <h3 class="section-title">Account Security</h3>

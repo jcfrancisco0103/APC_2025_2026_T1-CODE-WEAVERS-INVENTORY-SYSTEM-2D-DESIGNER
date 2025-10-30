@@ -40,6 +40,8 @@ class ProductAdmin(admin.ModelAdmin):
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     readonly_fields = ('product', 'quantity', 'price')
+    extra = 0  # Don't show extra empty forms
+    can_delete = False  # Prevent deletion of order items
 
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
@@ -49,6 +51,48 @@ class OrderAdmin(admin.ModelAdmin):
     list_filter = ('status', 'created_at', 'payment_method')
     search_fields = ('order_ref', 'customer__user__first_name', 'customer__user__last_name', 'mobile', 'email', 'address')
     inlines = [OrderItemInline]
+    
+    # Make customer order details read-only to protect order integrity
+    readonly_fields = (
+        'created_at', 'updated_at', 'customer', 'email', 'address', 'mobile', 
+        'order_date', 'payment_method', 'transaction_id', 'order_ref', 
+        'delivery_fee', 'delivery_proof_photo', 'customer_received_at',
+        'cancellation_reason', 'cancellation_requested_at', 'cancellation_approved_by',
+        'cancellation_approved_at', 'refund_processed', 'refund_amount', 
+        'refund_processed_at', 'refund_processed_by'
+    )
+    
+    # Fields that can be edited by admin (operational fields only)
+    fields = (
+        # Read-only customer and order information
+        ('order_ref', 'customer', 'order_date'),
+        ('email', 'mobile'),
+        ('address',),
+        ('payment_method', 'transaction_id'),
+        ('delivery_fee',),
+        
+        # Editable operational fields
+        ('status', 'estimated_delivery_date'),
+        ('notes',),
+        
+        # Cancellation information (read-only)
+        ('cancellation_status', 'cancellation_reason'),
+        ('cancellation_requested_at', 'cancellation_approved_by', 'cancellation_approved_at'),
+        ('cancellation_admin_notes',),
+        
+        # Delivery tracking (read-only customer proof, editable admin fields)
+        ('delivery_proof_photo', 'customer_received_at'),
+        
+        # Refund information (read-only)
+        ('refund_processed', 'refund_amount', 'refund_processed_at', 'refund_processed_by'),
+        
+        # Timestamps (read-only)
+        ('created_at', 'updated_at'),
+    )
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion of orders to maintain data integrity"""
+        return False
 
 admin.site.register(Orders, OrderAdmin)
 

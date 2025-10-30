@@ -16,7 +16,7 @@ class CustomerUserForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'password']
+        fields = ['first_name', 'last_name', 'username', 'email', 'password']
         widgets = {
             'password': forms.PasswordInput(attrs={'autocomplete': 'new-password'})
         }
@@ -26,6 +26,18 @@ class CustomerUserForm(forms.ModelForm):
         if username and User.objects.filter(username=username).exists():
             raise forms.ValidationError("Unable to use this username. Please choose another.")
         return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email and User.objects.filter(email=email).exists():
+            raise forms.ValidationError("An account with this email already exists.")
+        return email
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email and User.objects.filter(email=email).exists():
+            raise forms.ValidationError("An account with this email already exists.")
+        return email
 
     def clean_password(self):
         password = self.cleaned_data.get('password')
@@ -63,6 +75,27 @@ class CustomerForm(forms.ModelForm):
     citymun = forms.CharField(max_length=100, required=False)
     barangay = forms.CharField(max_length=100, required=False)
 
+    # PSGC to Django region code mapping
+    PSGC_TO_DJANGO_REGION = {
+        '010000000': 'R1',   # Ilocos Region
+        '020000000': 'R2',   # Cagayan Valley
+        '030000000': 'R3',   # Central Luzon
+        '040000000': 'R4A',  # CALABARZON
+        '170000000': 'R4B',  # MIMAROPA
+        '050000000': 'R5',   # Bicol Region
+        '060000000': 'R6',   # Western Visayas
+        '070000000': 'R7',   # Central Visayas
+        '080000000': 'R8',   # Eastern Visayas
+        '090000000': 'R9',   # Zamboanga Peninsula
+        '100000000': 'R10',  # Northern Mindanao
+        '110000000': 'R11',  # Davao Region
+        '120000000': 'R12',  # SOCCSKSARGEN
+        '130000000': 'NCR',  # National Capital Region
+        '140000000': 'CAR',  # Cordillera Administrative Region
+        '160000000': 'R13',  # Caraga
+        '150000000': 'BARMM' # Bangsamoro Autonomous Region in Muslim Mindanao
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['region'].choices = models.Customer.REGION_CHOICES
@@ -79,6 +112,9 @@ class CustomerForm(forms.ModelForm):
             # Province is not required for NCR
             if field == 'province':
                 region_value = self.data.get('region', None) or self.initial.get('region', None)
+                # Convert PSGC code to Django code if needed
+                if region_value in self.PSGC_TO_DJANGO_REGION:
+                    region_value = self.PSGC_TO_DJANGO_REGION[region_value]
                 if region_value == 'NCR':
                     self.fields[field].required = False
                 else:
@@ -86,13 +122,27 @@ class CustomerForm(forms.ModelForm):
             else:
                 self.fields[field].required = True
 
+    def clean_region(self):
+        region = self.cleaned_data.get('region')
+        if region:
+            # Convert PSGC code to Django region code if it's a PSGC code
+            if region in self.PSGC_TO_DJANGO_REGION:
+                return self.PSGC_TO_DJANGO_REGION[region]
+            # If it's already a Django code, validate it's in choices
+            valid_codes = [choice[0] for choice in models.Customer.REGION_CHOICES]
+            if region in valid_codes:
+                return region
+            # If neither, raise validation error
+            raise forms.ValidationError(f"Invalid region code: {region}")
+        return region
+
     class Meta:
         model = models.Customer
         fields = ['street_address', 'citymun', 'province', 'barangay', 'postal_code', 'mobile', 'profile_pic', 'region']
         widgets = {
             'citymun': forms.Select(choices=[]),
             'province': forms.Select(choices=[]),
-            'barangay': forms.HiddenInput(),
+            'barangay': forms.Select(choices=[]),
         }
 
     def clean(self):
@@ -164,7 +214,7 @@ class AccountSecurityForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['username']
+        fields = ['username', 'email']
 
     def clean_username(self):
         username = self.cleaned_data.get('username')
@@ -200,6 +250,27 @@ class ShippingAddressForm(forms.ModelForm):
     citymun = forms.CharField(max_length=100, required=False)
     barangay = forms.CharField(max_length=100, required=False)
 
+    # PSGC to Django region code mapping
+    PSGC_TO_DJANGO_REGION = {
+        '010000000': 'R1',   # Ilocos Region
+        '020000000': 'R2',   # Cagayan Valley
+        '030000000': 'R3',   # Central Luzon
+        '040000000': 'R4A',  # CALABARZON
+        '170000000': 'R4B',  # MIMAROPA
+        '050000000': 'R5',   # Bicol Region
+        '060000000': 'R6',   # Western Visayas
+        '070000000': 'R7',   # Central Visayas
+        '080000000': 'R8',   # Eastern Visayas
+        '090000000': 'R9',   # Zamboanga Peninsula
+        '100000000': 'R10',  # Northern Mindanao
+        '110000000': 'R11',  # Davao Region
+        '120000000': 'R12',  # SOCCSKSARGEN
+        '130000000': 'NCR',  # National Capital Region
+        '140000000': 'CAR',  # Cordillera Administrative Region
+        '160000000': 'R13',  # Caraga
+        '150000000': 'BARMM' # Bangsamoro Autonomous Region in Muslim Mindanao
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['region'].choices = models.Customer.REGION_CHOICES
@@ -216,12 +287,29 @@ class ShippingAddressForm(forms.ModelForm):
             # Province is not required for NCR
             if field == 'province':
                 region_value = self.data.get('region', None) or self.initial.get('region', None)
+                # Convert PSGC code to Django code if needed
+                if region_value in self.PSGC_TO_DJANGO_REGION:
+                    region_value = self.PSGC_TO_DJANGO_REGION[region_value]
                 if region_value == 'NCR':
                     self.fields[field].required = False
                 else:
                     self.fields[field].required = True
             else:
                 self.fields[field].required = True
+
+    def clean_region(self):
+        region = self.cleaned_data.get('region')
+        if region:
+            # Convert PSGC code to Django region code if it's a PSGC code
+            if region in self.PSGC_TO_DJANGO_REGION:
+                return self.PSGC_TO_DJANGO_REGION[region]
+            # If it's already a Django code, validate it's in choices
+            valid_codes = [choice[0] for choice in models.Customer.REGION_CHOICES]
+            if region in valid_codes:
+                return region
+            # If neither, raise validation error
+            raise forms.ValidationError(f"Invalid region code: {region}")
+        return region
 
     class Meta:
         model = models.Customer

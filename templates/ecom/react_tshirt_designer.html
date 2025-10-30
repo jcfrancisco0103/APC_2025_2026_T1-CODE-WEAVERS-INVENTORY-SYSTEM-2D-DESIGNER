@@ -38,7 +38,7 @@
                 <div class="flex items-center justify-between h-16">
                     <div class="text-white text-xl font-bold">WorksTeamWear</div>
                     <div class="flex space-x-4">
-                        <a href="{% url 'home' %}" class="text-gray-300 hover:text-white px-3 py-2">Home</a>
+                        <a href="{% url 'customer-home' %}" class="text-gray-300 hover:text-white px-3 py-2">Home</a>
                         <a href="{% url 'react_tshirt_designer' %}" class="text-white px-3 py-2">Jersey Designer</a>
                         <a href="{% url 'about' %}" class="text-gray-300 hover:text-white px-3 py-2">About Us</a>
                         {% if user.is_authenticated %}
@@ -123,7 +123,7 @@
         };
 
         // Wait for React to load, then override Three.js loaders
-        setTimeout(() => {
+        function checkForThreeJS() {
             console.log('Checking for THREE.js...');
             if (window.THREE && window.THREE.FileLoader) {
                 console.log('THREE.js found, setting up FileLoader override...');
@@ -151,12 +151,13 @@
                 };
             } else {
                 console.log('THREE.js not found yet, will try again...');
-                setTimeout(arguments.callee, 1000);
+                setTimeout(checkForThreeJS, 1000);
             }
-        }, 1000);
+        }
+        setTimeout(checkForThreeJS, 1000);
     </script>
     
     <!-- React T-Shirt Designer JavaScript -->
-    <script type="module" crossorigin src="{% static 'react-designer/assets/index-CmYCXy6j.js' %}?v={{ request.GET.ide_webview_request_time|default:'1' }}"></script>
+    <script type="module" crossorigin src="{% static 'react-designer/assets/index-Vvv8ZYE_.js' %}?v={{ request.GET.ide_webview_request_time|default:'1' }}"></script>
 </body>
 </html>

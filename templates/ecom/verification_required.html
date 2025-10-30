@@ -1,0 +1,98 @@
+{% extends "ecom/homebase.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">
+                        <i class="fas fa-envelope-open-text me-2"></i>
+                        Email Verification Required
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-envelope-circle-check fa-4x text-warning mb-3"></i>
+                        <h5>Please verify your email address</h5>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        We've sent a verification email to <strong>{{ user.email }}</strong>. 
+                        Please check your inbox and click the verification link to activate your account.
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>What to do next:</h6>
+                        <ol>
+                            <li>Check your email inbox for a message from us</li>
+                            <li>Click the "Verify Email Address" button in the email</li>
+                            <li>Return to this site and log in</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-clock me-2"></i>
+                        <strong>Note:</strong> The verification link will expire in 24 hours for security reasons.
+                    </div>
+                    
+                    <div class="text-center">
+                        <a href="{% url 'resend_verification' %}" class="btn btn-primary me-2">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            Resend Verification Email
+                        </a>
+                        
+                        <a href="{% url 'customerlogin' %}" class="btn btn-secondary">
+                            <i class="fas fa-sign-in-alt me-2"></i>
+                            Back to Login
+                        </a>
+                    </div>
+                    
+                    <div class="mt-4 text-center">
+                        <small class="text-muted">
+                            Didn't receive the email? Check your spam folder or 
+                            <a href="mailto:support@yourstore.com">contact support</a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time verification status check -->
+<script>
+function checkVerificationStatus() {
+    fetch('{% url "check_verification_status" %}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.is_verified) {
+                // Show success message and redirect
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                alertDiv.style.top = '20px';
+                alertDiv.style.right = '20px';
+                alertDiv.style.zIndex = '9999';
+                alertDiv.innerHTML = `
+                    <i class="fas fa-check-circle me-2"></i>
+                    Email verified successfully! Redirecting...
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+                
+                // Redirect after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '{% url "customerlogin" %}';
+                }, 2000);
+            }
+        })
+        .catch(error => {
+            console.log('Error checking verification status:', error);
+        });
+}
+
+// Check verification status every 5 seconds
+setInterval(checkVerificationStatus, 5000);
+</script>
+{% endblock %}
