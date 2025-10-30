@@ -83,6 +83,11 @@
             
             {% for order_dict in orders_with_items %}
             <div class="card">
+                {% if order_dict.order.cancellation_status == 'requested' %}
+                <div class="alert alert-warning mb-0" style="border-radius: 0; border-bottom: 1px solid #dee2e6;">
+                    <i class="fa fa-exclamation-triangle"></i> <strong>Waiting for Cancellation</strong> - Your cancellation request is pending admin approval.
+                </div>
+                {% endif %}
                 <div class="card-header">
                     <div class="order-details">
                         <div>
@@ -194,7 +199,11 @@
                                 {% endif %}
                                 {% if order_dict.order.status == 'Pending' or order_dict.order.status == 'Processing' or order_dict.order.status == 'Order Confirmed' %}
                                 <a class="btn btn-primary btn-sm rounded-0" style="text-decoration:none;" href="{% url 'download-invoice' order_dict.order.id %}" target="_blank"><i class="fa fa-download " style="font-size: 12px;height:auto"></i> Download Invoice</a>
+                                {% if order_dict.order.cancellation_status == 'requested' %}
+                                <button type="button" class="btn btn-secondary btn-sm rounded-0" disabled><i class="fa fa-times" style="font-size: 12px;height:auto"></i> Cancel Requested</button>
+                                {% else %}
                                 <button type="button" class="btn btn-danger btn-sm rounded-0" data-toggle="modal" data-target="#cancelModal{{order_dict.order.id}}"><i class="fa fa-times" style="font-size: 12px;height:auto"></i> Cancel Order</button>
+                                {% endif %}
                                 {% elif order_dict.order.status == 'Delivered' and not order_dict.order.customer_received_at %}
                                 <button type="button" class="btn btn-success btn-sm rounded-0" onclick="confirmDelivery({{order_dict.order.id}})"><i class="fa fa-check" style="font-size: 12px;height:auto"></i> Delivered</button>
                                 {% elif order_dict.order.status == 'Delivered' and order_dict.order.customer_received_at %}
