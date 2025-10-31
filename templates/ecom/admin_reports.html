@@ -114,7 +114,7 @@
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
+            gap: 20px;
             margin-bottom: 30px;
         }
 
@@ -487,13 +487,13 @@
             <div id="selectedDateRangeDisplay" style="margin-left: 10px; font-weight: bold; padding-top: 8px;"></div>
         </div>
 
-        <!-- KPI Cards -->
+        <!-- KPI Cards - Enhanced with better database reflection -->
         <div class="kpi-grid">
             <div class="kpi-card">
                 <div class="kpi-content">
-                    <h3>Total Revenue</h3>
+                    <h3>Total Revenue (Enhanced)</h3>
                     <div class="kpi-value">₱ {{ total_revenue|floatformat:2|intcomma }}</div>
-                    <div class="kpi-change up">From delivered orders</div>
+                    <div class="kpi-change up">Items + Delivery fees</div>
                 </div>
                 <div class="kpi-icon">💰</div>
             </div>
@@ -509,11 +509,29 @@
 
             <div class="kpi-card">
                 <div class="kpi-content">
+                    <h3>Delivered Orders</h3>
+                    <div class="kpi-value">{{ total_delivered_orders }}</div>
+                    <div class="kpi-change up">Successfully completed</div>
+                </div>
+                <div class="kpi-icon">✅</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-content">
                     <h3>Total Customers</h3>
                     <div class="kpi-value">{{ total_customers }}</div>
                     <div class="kpi-change up">Registered customers</div>
                 </div>
                 <div class="kpi-icon">👥</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <h3>Items Sold</h3>
+                    <div class="kpi-value">{{ total_items_sold }}</div>
+                    <div class="kpi-change up">Total quantity delivered</div>
+                </div>
+                <div class="kpi-icon">📦</div>
             </div>
 
             <div class="kpi-card">

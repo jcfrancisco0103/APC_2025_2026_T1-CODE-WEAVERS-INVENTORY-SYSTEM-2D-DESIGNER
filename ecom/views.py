@@ -79,9 +79,16 @@ def has_admin_access(user):
 def admin_required(view_func):
     """
     Decorator that ensures only authenticated admin users (staff or SuperAdmin) can access a view.
-    If user is not admin, logs them out and redirects to admin login.
+    If user is not authenticated, redirects to admin login.
+    If user is authenticated but not admin, logs them out and redirects to admin login.
     """
     def wrapper(request, *args, **kwargs):
+        # First check if user is authenticated
+        if not request.user.is_authenticated:
+            messages.error(request, 'Please log in to access this page.')
+            return redirect('adminlogin')
+        
+        # Then check if user has admin access
         if not has_admin_access(request.user):
             # Log out the user if they're not an admin
             from django.contrib.auth import logout
@@ -95,8 +102,15 @@ def admin_required(view_func):
 def superadmin_required(view_func):
     """
     Decorator that ensures only SuperAdmin users can access a view.
+    First checks authentication, then SuperAdmin privileges.
     """
     def wrapper(request, *args, **kwargs):
+        # First check if user is authenticated
+        if not request.user.is_authenticated:
+            messages.error(request, 'Please log in to access this page.')
+            return redirect('adminlogin')
+        
+        # Then check if user is SuperAdmin
         if not is_superadmin(request.user):
             messages.error(request, 'Access denied. SuperAdmin privileges required.')
             return redirect('admin-dashboard')
@@ -1019,27 +1033,46 @@ def admin_view_booking_view(request):
     return redirect('admin-view-processing-orders')
 
 def get_order_status_counts():
-    counts = {
-        'processing': models.Orders.objects.filter(status__in=['Pending', 'Processing']).count(),
-        'confirmed': models.Orders.objects.filter(status='Order Confirmed').count(),
-        'shipping': models.Orders.objects.filter(status='Out for Delivery').count(),
-        'delivered': models.Orders.objects.filter(status='Delivered').count(),
-        'cancelled': models.Orders.objects.filter(status='Cancelled').count(),
-    }
-    return counts
+    try:
+        counts = {
+            'processing': models.Orders.objects.filter(status__in=['Pending', 'Processing']).count(),
+            'confirmed': models.Orders.objects.filter(status='Order Confirmed').count(),
+            'shipping': models.Orders.objects.filter(status='Out for Delivery').count(),
+            'delivered': models.Orders.objects.filter(status='Delivered').count(),
+            'cancelled': models.Orders.objects.filter(status='Cancelled').count(),
+        }
+        return counts
+    except Exception:
+        # Return default counts if database schema issues occur
+        return {
+            'processing': 0,
+            'confirmed': 0,
+            'shipping': 0,
+            'delivered': 0,
+            'cancelled': 0,
+        }
 
 @admin_required
 def admin_view_processing_orders(request):
-    orders = models.Orders.objects.filter(status__in=['Pending', 'Processing'])
-    counts = get_order_status_counts()
-    context = {
-        'processing_count': counts.get('processing', 0),
-        'confirmed_count': counts.get('confirmed', 0),
-        'shipping_count': counts.get('shipping', 0),
-        'delivered_count': counts.get('delivered', 0),
-        'cancelled_count': counts.get('cancelled', 0),
-    }
-    return prepare_admin_order_view(request, orders, 'Processing', 'ecom/admin_view_orders.html', extra_context=context)
+    try:
+        orders = models.Orders.objects.filter(status__in=['Pending', 'Processing'])
+        counts = get_order_status_counts()
+        context = {
+            'processing_count': counts.get('processing', 0),
+            'confirmed_count': counts.get('confirmed', 0),
+            'shipping_count': counts.get('shipping', 0),
+            'delivered_count': counts.get('delivered', 0),
+            'cancelled_count': counts.get('cancelled', 0),
+        }
+        return prepare_admin_order_view(request, orders, 'Processing', 'ecom/admin_view_orders.html', extra_context=context)
+    except Exception as e:
+        # Handle database schema issues (e.g., missing transaction_id column)
+        from django.contrib import messages
+        messages.error(request, f"Database error: {str(e)}. Please contact the administrator to apply pending migrations.")
+        return render(request, 'ecom/admin_base.html', {
+            'error_message': 'Database schema is out of date. Please apply migrations on the production server.',
+            'technical_details': str(e)
+        })
 
 @admin_required
 def admin_view_confirmed_orders(request):
@@ -4446,7 +4479,7 @@ def admin_report_view(request):
     """
     Admin view for generating sales reports with comprehensive metrics
     """
-    from django.db.models import Sum, Count, Avg, Q
+    from django.db.models import Sum, Count, Avg, Q, F
     from datetime import timedelta
     
     # Get filter parameters
@@ -4496,39 +4529,61 @@ def admin_report_view(request):
 
         return response
 
-    # Calculate comprehensive metrics from database
+    # ENHANCED TOTAL SALES CALCULATION - More accurate database reflection
     
-    # 1. Total Revenue - sum of all delivered orders
-    total_revenue = models.Orders.objects.filter(status='Delivered').aggregate(
-        total=Sum('orderitem__price') + Sum('delivery_fee')
+    # 1. Total Revenue - Enhanced calculation using database aggregation
+    # Calculate from OrderItems for more accuracy
+    total_revenue_from_items = models.OrderItem.objects.filter(
+        order__status='Delivered'
+    ).aggregate(
+        total=Sum(F('price') * F('quantity'))
     )['total'] or 0
     
-    # Alternative calculation using get_total_amount method
+    # Add delivery fees from delivered orders
+    total_delivery_fees = models.Orders.objects.filter(
+        status='Delivered'
+    ).aggregate(
+        total=Sum('delivery_fee')
+    )['total'] or 0
+    
+    # Combined total revenue (more accurate) - Fix decimal/float conversion
+    total_revenue = float(total_revenue_from_items) + float(total_delivery_fees)
+    
+    # Alternative calculation using get_total_amount method for comparison
     delivered_orders = models.Orders.objects.filter(status='Delivered')
-    total_revenue_alt = sum(order.get_total_amount() for order in delivered_orders)
+    total_revenue_alt = float(sum(order.get_total_amount() for order in delivered_orders))
     
     # 2. Total Orders - count of all orders (not just delivered)
     total_orders = models.Orders.objects.count()
     
-    # 3. Total Customers - count of unique customers
+    # 3. Total Delivered Orders - for accurate calculations
+    total_delivered_orders = models.Orders.objects.filter(status='Delivered').count()
+    
+    # 4. Total Customers - count of unique customers
     total_customers = models.Customer.objects.count()
     
-    # 4. Average Order Value - total revenue / number of delivered orders
-    delivered_orders_count = models.Orders.objects.filter(status='Delivered').count()
-    avg_order_value = total_revenue_alt / delivered_orders_count if delivered_orders_count > 0 else 0
+    # 5. Average Order Value - Enhanced calculation using more accurate total revenue
+    avg_order_value = total_revenue / total_delivered_orders if total_delivered_orders > 0 else 0
     
-    # 5. Conversion Rate - (customers with orders / total customers) * 100
+    # 6. Total Items Sold - Enhanced metric
+    total_items_sold = models.OrderItem.objects.filter(
+        order__status='Delivered'
+    ).aggregate(
+        total=Sum('quantity')
+    )['total'] or 0
+    
+    # 7. Conversion Rate - Enhanced calculation
     customers_with_orders = models.Customer.objects.filter(orders__isnull=False).distinct().count()
     conversion_rate = (customers_with_orders / total_customers * 100) if total_customers > 0 else 0
     
-    # 6. Active Users - customers who have logged in or placed orders in the last 30 days
+    # 8. Active Users - customers who have logged in or placed orders in the last 30 days
     thirty_days_ago = timezone.now() - timedelta(days=30)
     active_users = models.Customer.objects.filter(
         Q(user__last_login__gte=thirty_days_ago) | 
         Q(orders__created_at__gte=thirty_days_ago)
     ).distinct().count()
 
-    # 7. Monthly Sales Data for Sales Trend Chart (last 12 months)
+    # 9. Monthly Sales Data for Sales Trend Chart (last 12 months) - Enhanced calculation
     from datetime import datetime
     import calendar
     
@@ -4649,10 +4704,13 @@ def admin_report_view(request):
         'report_data': report_data,
         'total_sales': sum(record['amount'] for record in report_data),
         'total_orders': len(report_data),
-        # New comprehensive metrics
-        'total_revenue': total_revenue_alt,
+        # ENHANCED comprehensive metrics with accurate database reflection
+        'total_revenue': total_revenue,  # Using enhanced calculation
+        'total_revenue_alt': total_revenue_alt,  # Alternative calculation for comparison
         'total_orders_all': total_orders,
+        'total_delivered_orders': total_delivered_orders,  # New metric
         'total_customers': total_customers,
+        'total_items_sold': total_items_sold,  # New metric
         'avg_order_value': avg_order_value,
         'conversion_rate': conversion_rate,
         'active_users': active_users,
