@@ -48,7 +48,62 @@
 
         .fa:hover {
           opacity: 0.5;
+        }
+
+        /* Cart button styles */
+        .cart-button {
+          background-color: #00cc66;
+          box-shadow: 0 4px 4px 0 rgb(0 0 0 / 23%), inset 1px 1px 0 0 hsl(0deg 0% 100% / 20%);
+          padding: 0 12px;
+          text-align: center;
+          height: 41px;
+          border-radius: 2px;
+          font-weight: 500;
+          width: auto;
+          display: inline-flex;
+          align-items: center;
+          color: #FFFFFF;
           text-decoration: none;
+          border: none;
+          outline: none;
+          transition: background-color 0.3s ease;
+          margin-left: 10px;
+        }
+
+        .cart-button:hover {
+          opacity: .5;
+          text-decoration: none;
+          color: #fff;
+          cursor: pointer;
+        }
+
+        .cart-button:active {
+          opacity: 0.7;
+          text-decoration: none;
+        }
+
+        .cart-svg {
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          vertical-align: middle;
+          margin-right: 8px;
+        }
+
+        .item-number {
+          border-radius: 3px;
+          background-color: rgb(207 37 37 / 92%);
+          height: 20px;
+          padding: 3px 6px;
+          font-weight: 500;
+          display: inline-block;
+          color: #fff;
+          line-height: 12px;
+          margin-left: 10px;
+        }
+
+        .item-number:empty:after {
+          content: "0";
         }
 
         .fa-facebook {
@@ -71,21 +126,21 @@
   
   <!-- Navigation -->
 
-<nav class="bg-gray-900">
+<nav class="bg-white shadow-md">
   <div class="max-w-7xl mx-auto px-4">
     <div class="flex items-center justify-between h-16">
       
-      <!-- Logo -->
-      <div class="text-white text-xl font-bold">WorksTeamWear</div>
+      <!-- Logo (Left) -->
+      <div class="text-gray-800 font-weight:500 text-xl font-bold">WorksTeamWear</div>
 
-      <!-- Nav Links -->
+      <!-- Main Nav Links (Center) -->
       <div class="flex space-x-4 items-center">
 
-        <a href="{% url 'customer-home' %}" class="text-gray-300 hover:text-white px-3 py-2">Home</a>
+        <a href="{% url 'customer-home' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2">Home</a>
 
         <!-- Track Orders Dropdown -->
         <div x-data="{ open: false }" class="relative">
-          <button @click="open = !open" class="text-gray-300 hover:text-white px-3 py-2 flex items-center">
+          <button @click="open = !open" class="text-gray-700 hover:text-gray-900 px-3 py-2 flex items-center">
             Track Orders
             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" stroke-width="2"
                  viewBox="0 0 24 24">
@@ -140,10 +195,29 @@
         </div>
         <!-- End Track Orders Dropdown -->
 
-        <a href="/wishlist" class="text-gray-300 hover:text-white px-3 py-2">Wishlist</a>
-        <a href="/jersey-designer/" class="text-gray-300 hover:text-white px-3 py-2">3D Designer</a>
-        <a href="{% url 'about' %}" class="text-gray-300 hover:text-white px-3 py-2">About Us</a>
-        <a href="/my-profile" class="text-gray-300 hover:text-white px-3 py-2">Profile</a>
+        <a href="/wishlist" class="text-gray-700 hover:text-gray-900 px-3 py-2">Wishlist</a>
+        <a href="/jersey-designer/" class="text-gray-700 hover:text-gray-900 px-3 py-2">3D Designer</a>
+        <a href="{% url 'about' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2">About Us</a>
+      </div>
+
+      <!-- Right Section: Cart, Profile, Logout -->
+      <div class="flex space-x-2 items-center">
+        <!-- Cart Button -->
+        <a href="/cart" class="cart-button">
+          <svg class="cart-svg" width="16" height="16" viewBox="0 0 16 16">
+            <path d="M15.32 2.405H4.887C3 2.405 2.46.805 2.46.805L2.257.21C2.208.085 2.083 0 1.946 0H.336C.1 0-.064.24.024.46l.644 1.945L3.11 9.767c.047.137.175.23.32.23h8.418l-.493 1.958H3.768l.002.003c-.017 0-.033-.003-.05-.003-1.06 0-1.92.86-1.92 1.92s.86 1.92 1.92 1.92c.99 0 1.805-.7 1.92-1.68h7.16c.9 0 1.63-.73 1.63-1.63 0-.9-.73-1.63-1.63-1.63H4.717l.447-1.78h8.428c.4 0 .77-.26.9-.64l1.41-4.2c.07-.22.07-.46-.01-.67-.08-.21-.24-.38-.46-.46z" fill="currentColor"/>
+          </svg>
+          Cart
+          <span class="item-number">{{ product_count_in_cart }}</span>
+        </a>
+        
+        <a href="/my-profile" class="text-gray-700 hover:text-gray-900 px-3 py-2">Profile</a>
+        
+        <!-- Logout Form -->
+        <form method="post" action="{% url 'logout' %}" style="margin: 0; padding: 0; display: inline;">
+          {% csrf_token %}
+          <button type="submit" class="text-gray-700 hover:text-gray-900 px-3 py-2" style="background: none; border: none; padding: 12px; margin: 0; font-size: 14px; cursor: pointer;">Logout</button>
+        </form>
       </div>
     </div>
   </div>
