@@ -5,30 +5,37 @@
 
 <style>
   /* Simplified, clean profile layout */
-  .page-wrap { max-width: 1100px; margin: 40px auto; padding: 0 16px; }
-  .profile-grid { display: grid; grid-template-columns: 240px 1fr; gap: 20px; }
-  .sidebar { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; }
-  .sidebar-title { font-weight:700; color:#374151; font-size:1rem; margin-bottom:8px; }
-  .side-link { display:block; padding:10px 12px; border-radius:8px; color:#374151; text-decoration:none; font-weight:600; }
+  .page-wrap { max-width: 1180px; margin: 44px auto; padding: 0 18px; }
+  .profile-grid { display: grid; grid-template-columns: 280px 1fr; gap: 22px; }
+  .sidebar { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; }
+  .sidebar-title { font-weight:700; color:#374151; font-size:1.12rem; margin-bottom:10px; }
+  .side-link { display:block; padding:12px 14px; border-radius:8px; color:#374151; text-decoration:none; font-weight:600; font-size:1.15rem; }
   .side-link:hover { background:#f3f4f6; }
 
   .content-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; }
-  .content-head { padding:18px 18px 12px 18px; border-bottom:1px solid #e5e7eb; }
-  .content-title { font-size:1.25rem; font-weight:700; color:#111827; }
-  .content-sub { color:#6b7280; font-size:.95rem; }
-  .content-body { padding:18px; }
+  .content-head { padding:20px 20px 14px 20px; border-bottom:1px solid #e5e7eb; }
+  .content-title { font-size:1.5rem; font-weight:700; color:#111827; }
+  .content-sub { color:#6b7280; font-size:1.12rem; }
+  .content-body { padding:20px; }
 
-  .form-grid { display:grid; grid-template-columns: 1fr 320px; gap:20px; }
-  .form-group { margin-bottom:14px; position:relative; }
-  .form-group .input-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#9ca3af; }
-  .form-control { width:100%; border:1px solid #d1d5db; border-radius:12px; padding:10px 12px 10px 38px; background:#f9fafb; }
+  .form-grid { display:grid; grid-template-columns: 1fr 360px; gap:22px; }
+  .form-group { margin-bottom:16px; position:relative; }
+  .form-group .input-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#9ca3af; font-size:1.1rem; }
+  .form-control { width:100%; border:1px solid #d1d5db; border-radius:12px; padding:12px 14px 12px 42px; background:#f9fafb; font-size:1.12rem; }
+  .form-control::placeholder { font-size:1.08rem; }
   .form-control:focus { outline:none; border-color:#2563eb; background:#fff; }
-  .actions { display:flex; gap:10px; margin-top:10px; }
-  .btn-primary { background:#2563eb; color:#fff; padding:10px 18px; border:none; border-radius:10px; font-weight:700; }
-  .btn-secondary { background:#6b7280; color:#fff; padding:10px 18px; border:none; border-radius:10px; font-weight:600; text-decoration:none; }
-  .avatar-box { border:1px dashed #d1d5db; border-radius:12px; padding:14px; text-align:center; }
-  .avatar { width:120px; height:120px; border-radius:50%; object-fit:cover; background:#e5e7eb; display:inline-block; }
-  .hint { color:#6b7280; font-size:.85rem; margin-top:6px; }
+  .actions { display:flex; gap:12px; margin-top:12px; }
+  .btn-primary { background:#2563eb; color:#fff; padding:12px 20px; border:none; border-radius:10px; font-weight:700; }
+  .btn-secondary { background:#6b7280; color:#fff; padding:10px 16px; border:none; border-radius:10px; font-weight:600; text-decoration:none; }
+  .avatar-box { border:1px dashed #d1d5db; border-radius:12px; padding:18px; text-align:center; }
+  .avatar { width:140px; height:140px; border-radius:50%; object-fit:cover; background:#e5e7eb; display:inline-block; }
+  .hint { color:#6b7280; font-size:1.02rem; margin-top:6px; }
+
+  /* Style native file input button for better visibility */
+  input[type="file"] { font-size:1.02rem; }
+  input[type="file"]::file-selector-button { padding:10px 14px; border-radius:8px; background:#6b7280; color:#fff; border:none; font-weight:600; cursor:pointer; }
+  input[type="file"]::-webkit-file-upload-button { padding:10px 14px; border-radius:8px; background:#6b7280; color:#fff; border:none; font-weight:600; cursor:pointer; }
+
   @media (max-width: 900px) { .form-grid { grid-template-columns:1fr; } }
 </style>
 
@@ -146,21 +153,28 @@
             const html = await res.text();
             // Inject HTML
             tabContent.innerHTML = html;
-            // Execute any scripts contained in the loaded fragment (innerHTML won't run them)
+            // Execute scripts contained in the loaded fragment safely
             const scripts = tabContent.querySelectorAll('script');
             scripts.forEach(orig => {
-              const s = document.createElement('script');
-              // Preserve src or inline content
               if (orig.src) {
-                s.src = orig.src;
+                // Avoid loading duplicate external scripts
+                if (!document.querySelector(`script[src="${orig.src}"]`)) {
+                  const s = document.createElement('script');
+                  s.src = orig.src;
+                  s.async = false;
+                  if (orig.type) s.type = orig.type;
+                  document.body.appendChild(s);
+                }
               } else {
-                s.textContent = orig.textContent;
+                // Run inline scripts in an isolated scope to prevent const/let redeclaration errors
+                const code = orig.textContent || '';
+                try {
+                  new Function(`(function(){\n${code}\n})();`)();
+                } catch (err) {
+                  console.error('Fragment inline script error:', err);
+                }
               }
-              // Ensure same type
-              if (orig.type) s.type = orig.type;
-              // Append to body to execute
-              document.body.appendChild(s);
-              // Remove original to avoid duplicates
+              // Remove original to avoid duplicate execution on future reloads
               orig.parentNode && orig.parentNode.removeChild(orig);
             });
           } catch (e) {
@@ -185,6 +199,19 @@
         const defaultLink = document.querySelector('.side-link[data-tab="profile"]');
         if (defaultLink) setActive(defaultLink);
         </script>
+        <style>
+          /* Scoped scaling for My Profile page */
+          :where(#tab-content) { font-size: 1.2rem !important; line-height: 1.7; }
+          .content-card { font-size: 1.15rem; }
+          .side-link { font-size: 1.15rem !important; padding: 10px 12px; }
+          .avatar { width: 110px; height: 110px; }
+          .section-title, .page-header h2, .page-header h1 { font-size: 1.35rem; }
+          /* Inputs inside profile forms */
+          input, select, textarea { font-size: 1.15rem !important; }
+          input::placeholder, textarea::placeholder { font-size: 1.12rem !important; }
+          label { font-size: 1.15rem !important; }
+          .btn, .btn-primary, .btn-secondary { font-size: inherit; }
+        </style>
       </div>
     </div>
   </div>
