@@ -1,9 +1,15 @@
-# Generated manually for EmailVerification model
+"""
+This migration was a duplicate of 0071_emailverification and attempted to
+recreate the same EmailVerification table, causing
+sqlite3.OperationalError: table "ecom_emailverification" already exists.
 
-import django.db.models.deletion
-import uuid
+To preserve migration history without breaking existing databases or CI, we
+convert this migration into a no-op. It now only depends on 0071 and performs
+no operations.
+"""
+
 from django.conf import settings
-from django.db import migrations, models
+from django.db import migrations
 
 
 class Migration(migrations.Migration):
@@ -13,20 +19,5 @@ class Migration(migrations.Migration):
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
-    operations = [
-        migrations.CreateModel(
-            name='EmailVerification',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('verification_token', models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
-                ('is_verified', models.BooleanField(default=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('verified_at', models.DateTimeField(blank=True, null=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-            ],
-            options={
-                'verbose_name': 'Email Verification',
-                'verbose_name_plural': 'Email Verifications',
-            },
-        ),
-    ]
+    # No-op: 0071 already created the model/table
+    operations = []
