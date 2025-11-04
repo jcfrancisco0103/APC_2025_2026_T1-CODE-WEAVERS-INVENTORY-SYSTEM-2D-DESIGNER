@@ -38,7 +38,7 @@
       "dest": "ecommerce/wsgi.py"
     }
   ],
-  "buildCommand": "",
+  "buildCommand": "pip install -r requirements.txt && python manage.py collectstatic --noinput --clear",
   
   "devCommand": "python manage.py runserver",
   "framework": null
