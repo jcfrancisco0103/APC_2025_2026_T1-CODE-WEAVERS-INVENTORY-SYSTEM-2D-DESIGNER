@@ -9,6 +9,7 @@ on:
 env:
   DOCKER_BUILDKIT: 1
   COMPOSE_DOCKER_CLI_BUILD: 1
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
 
 jobs:
   test:
@@ -59,11 +60,21 @@ jobs:
       run: |
         python manage.py check --deploy
 
+    - name: Migrate database
+      run: |
+        python manage.py migrate --noinput
+
+    - name: Start dev server in background
+      run: |
+        nohup python manage.py runserver 0.0.0.0:8000 >/dev/null 2>&1 &
+        # Wait for server to be ready
+        for i in {1..30}; do
+          if curl -sSf http://127.0.0.1:8000/ >/dev/null; then
+            echo "Server is up"; break; fi; sleep 1; done
+
     - name: Run tests
       run: |
         python manage.py test --verbosity=1 --parallel
-      env:
-        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
 
     - name: Collect static files
       run: |
