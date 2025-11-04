@@ -15,9 +15,7 @@ __pycache__/
 *.log
 logs/
 
-# Databases and local media/static outputs
-db.sqlite3
-*.sqlite3
+# Local media/static outputs (keep DB to allow read-only serverless usage)
 staticfiles/
 
 # Large archives and binaries

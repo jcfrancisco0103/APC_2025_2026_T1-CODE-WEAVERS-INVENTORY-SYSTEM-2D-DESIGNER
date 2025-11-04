@@ -14,14 +14,17 @@ ALLOWED_HOSTS = [
     '*'  # Remove this in production and add your specific domain
 ]
 
-# Database configuration for Vercel (using SQLite for simplicity)
-# For production, consider using a cloud database like PostgreSQL
+# Database configuration for Vercel (read-only SQLite bundled with code)
+# For real production, use a managed database (PostgreSQL/MySQL) via env vars.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/tmp/db.sqlite3',  # Vercel uses /tmp for writable files
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
+
+# Use cookie-based sessions to avoid DB writes on serverless
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
 
 # Static files configuration for Vercel
 STATIC_URL = '/static/'
