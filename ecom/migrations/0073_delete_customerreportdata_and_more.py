@@ -9,51 +9,57 @@ class Migration(migrations.Migration):
         ('ecom', '0072_emailverification_new'),
     ]
 
+    # 0061 already dropped these tables via raw SQL with IF EXISTS.
+    # Convert destructive ops to state-only so this migration is idempotent
+    # across environments where tables may already be gone.
     operations = [
-        migrations.DeleteModel(
-            name='CustomerReportData',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.DeleteModel(name='CustomerReportData')],
+            database_operations=[],
         ),
-        migrations.RemoveField(
-            model_name='generatedreport',
-            name='generated_by',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.RemoveField('generatedreport', 'generated_by')],
+            database_operations=[],
         ),
-        migrations.RemoveField(
-            model_name='generatedreport',
-            name='template',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.RemoveField('generatedreport', 'template')],
+            database_operations=[],
         ),
-        migrations.DeleteModel(
-            name='InventoryReportData',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.DeleteModel(name='InventoryReportData')],
+            database_operations=[],
         ),
-        migrations.AlterUniqueTogether(
-            name='productreportdata',
-            unique_together=None,
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.AlterUniqueTogether(name='productreportdata', unique_together=None)],
+            database_operations=[],
         ),
-        migrations.RemoveField(
-            model_name='productreportdata',
-            name='product',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.RemoveField('productreportdata', 'product')],
+            database_operations=[],
         ),
-        migrations.AlterUniqueTogether(
-            name='reportaccess',
-            unique_together=None,
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.AlterUniqueTogether(name='reportaccess', unique_together=None)],
+            database_operations=[],
         ),
-        migrations.RemoveField(
-            model_name='reportaccess',
-            name='user',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.RemoveField('reportaccess', 'user')],
+            database_operations=[],
         ),
-        migrations.RemoveField(
-            model_name='reporttemplate',
-            name='created_by',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.RemoveField('reporttemplate', 'created_by')],
+            database_operations=[],
         ),
-        migrations.DeleteModel(
-            name='SalesReportData',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.DeleteModel(name='SalesReportData')],
+            database_operations=[],
         ),
-        migrations.RemoveField(
-            model_name='scheduledreport',
-            name='created_by',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.RemoveField('scheduledreport', 'created_by')],
+            database_operations=[],
         ),
-        migrations.RemoveField(
-            model_name='scheduledreport',
-            name='template',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.RemoveField('scheduledreport', 'template')],
+            database_operations=[],
         ),
         migrations.AlterField(
             model_name='customjerseydesign',
@@ -65,19 +71,24 @@ class Migration(migrations.Migration):
             name='jersey_type',
             field=models.CharField(default='jersey', max_length=50),
         ),
-        migrations.DeleteModel(
-            name='GeneratedReport',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.DeleteModel(name='GeneratedReport')],
+            database_operations=[],
         ),
-        migrations.DeleteModel(
-            name='ProductReportData',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.DeleteModel(name='ProductReportData')],
+            database_operations=[],
         ),
-        migrations.DeleteModel(
-            name='ReportAccess',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.DeleteModel(name='ReportAccess')],
+            database_operations=[],
         ),
-        migrations.DeleteModel(
-            name='ReportTemplate',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.DeleteModel(name='ReportTemplate')],
+            database_operations=[],
         ),
-        migrations.DeleteModel(
-            name='ScheduledReport',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[migrations.DeleteModel(name='ScheduledReport')],
+            database_operations=[],
         ),
     ]
