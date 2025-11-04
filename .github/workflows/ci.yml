@@ -196,18 +196,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-    permissions:
-      contents: read
-      security-events: write
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+<<<<<<< HEAD
       with:
         submodules: false
       with:
         fetch-depth: 0
         submodules: false
+=======
+>>>>>>> parent of 3121b93f (ci(security): update trivy scan workflow permissions and actions)
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
@@ -218,7 +218,7 @@ jobs:
         output: 'trivy-results.sarif'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v2
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
