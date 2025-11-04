@@ -293,6 +293,26 @@ def home_view(request):
     paginator = Paginator(products, 12)  # Show 12 products per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
+    # Attach latest review per product for visible comment snippets on home tiles
+    try:
+        product_ids_on_page = [p.id for p in page_obj.object_list]
+        latest_reviews_qs = models.ProductReview.objects.filter(
+            product_id__in=product_ids_on_page
+        ).select_related('customer__user').order_by('-created_at')
+
+        latest_by_product = {}
+        for r in latest_reviews_qs:
+            if r.product_id not in latest_by_product:
+                latest_by_product[r.product_id] = r
+
+        # bind latest_review attribute for template access
+        for p in page_obj.object_list:
+            setattr(p, 'latest_review', latest_by_product.get(p.id))
+    except Exception:
+        # Fail-safe: do not block page if reviews retrieval fails
+        for p in page_obj.object_list:
+            setattr(p, 'latest_review', None)
     
     # Get price range for filters
     from django.db.models import Min, Max
@@ -1355,10 +1375,21 @@ def pending_orders_view(request):
         })
 
     print(f"DEBUG: Returning {len(orders_with_items)} orders with items")
-    return render(request, 'ecom/order_status_page.html', {
+    pending_count = models.Orders.objects.filter(customer=customer, status='Pending').count()
+    to_ship_count = models.Orders.objects.filter(customer=customer, status__in=['Processing', 'Order Confirmed']).count()
+    to_receive_count = models.Orders.objects.filter(customer=customer, status='Out for Delivery').count()
+    delivered_count = models.Orders.objects.filter(customer=customer, status='Delivered').count()
+    cancelled_count = models.Orders.objects.filter(customer=customer, status='Cancelled').count()
+    waiting_count = models.Orders.objects.filter(customer=customer, cancellation_status='requested').count()
+    return render(request, 'ecom/orders_tabbed.html', {
         'orders_with_items': orders_with_items,
-        'status': 'Pending',
-        'title': 'Pending Orders'
+        'active_tab': 'pending',
+        'pending_count': pending_count,
+        'to_ship_count': to_ship_count,
+        'to_receive_count': to_receive_count,
+        'delivered_count': delivered_count,
+        'cancelled_count': cancelled_count,
+        'waiting_count': waiting_count,
     })
 
 @login_required(login_url='customerlogin')
@@ -1398,10 +1429,10 @@ def to_ship_orders_view(request):
             line_total = Decimal(item.price) * item.quantity
             total += line_total
             custom_items.append({
-                'custom_item': item,
+                'item': item,
                 'size': item.size,
                 'quantity': item.quantity,
-                'price': item.price,
+                'unit_price': item.price,
                 'line_total': line_total,
             })
         
@@ -1422,7 +1453,22 @@ def to_ship_orders_view(request):
             'delivery_fee': delivery_fee,
             'grand_total': grand_total,
         })
-    return render(request, 'ecom/order_status_page.html', {'orders_with_items': orders_with_items, 'status': 'To Ship', 'title': 'Orders To Ship'})
+    pending_count = models.Orders.objects.filter(customer=customer, status='Pending').count()
+    to_ship_count = models.Orders.objects.filter(customer=customer, status__in=['Processing', 'Order Confirmed']).count()
+    to_receive_count = models.Orders.objects.filter(customer=customer, status='Out for Delivery').count()
+    delivered_count = models.Orders.objects.filter(customer=customer, status='Delivered').count()
+    cancelled_count = models.Orders.objects.filter(customer=customer, status='Cancelled').count()
+    waiting_count = models.Orders.objects.filter(customer=customer, cancellation_status='requested').count()
+    return render(request, 'ecom/orders_tabbed.html', {
+        'orders_with_items': orders_with_items,
+        'active_tab': 'to_ship',
+        'pending_count': pending_count,
+        'to_ship_count': to_ship_count,
+        'to_receive_count': to_receive_count,
+        'delivered_count': delivered_count,
+        'cancelled_count': cancelled_count,
+        'waiting_count': waiting_count,
+    })
 
 @login_required(login_url='customerlogin')
 def to_receive_orders_view(request):
@@ -1458,10 +1504,10 @@ def to_receive_orders_view(request):
             line_total = Decimal(item.price) * item.quantity
             total += line_total
             custom_items.append({
-                'custom_item': item,
+                'item': item,
                 'size': item.size,
                 'quantity': item.quantity,
-                'price': item.price,
+                'unit_price': item.price,
                 'line_total': line_total,
             })
         
@@ -1482,7 +1528,22 @@ def to_receive_orders_view(request):
             'delivery_fee': delivery_fee,
             'grand_total': grand_total,
         })
-    return render(request, 'ecom/order_status_page.html', {'orders_with_items': orders_with_items, 'status': 'To Receive', 'title': 'Orders To Receive'})
+    pending_count = models.Orders.objects.filter(customer=customer, status='Pending').count()
+    to_ship_count = models.Orders.objects.filter(customer=customer, status__in=['Processing', 'Order Confirmed']).count()
+    to_receive_count = models.Orders.objects.filter(customer=customer, status='Out for Delivery').count()
+    delivered_count = models.Orders.objects.filter(customer=customer, status='Delivered').count()
+    cancelled_count = models.Orders.objects.filter(customer=customer, status='Cancelled').count()
+    waiting_count = models.Orders.objects.filter(customer=customer, cancellation_status='requested').count()
+    return render(request, 'ecom/orders_tabbed.html', {
+        'orders_with_items': orders_with_items,
+        'active_tab': 'to_receive',
+        'pending_count': pending_count,
+        'to_ship_count': to_ship_count,
+        'to_receive_count': to_receive_count,
+        'delivered_count': delivered_count,
+        'cancelled_count': cancelled_count,
+        'waiting_count': waiting_count,
+    })
 
 @login_required(login_url='customerlogin')
 def delivered_orders_view(request):
@@ -1518,10 +1579,10 @@ def delivered_orders_view(request):
             line_total = Decimal(item.price) * item.quantity
             total += line_total
             custom_items.append({
-                'custom_item': item,
+                'item': item,
                 'size': item.size,
                 'quantity': item.quantity,
-                'price': item.price,
+                'unit_price': item.price,
                 'line_total': line_total,
             })
         
@@ -1542,7 +1603,22 @@ def delivered_orders_view(request):
             'delivery_fee': delivery_fee,
             'grand_total': grand_total,
         })
-    return render(request, 'ecom/order_status_page.html', {'orders_with_items': orders_with_items, 'status': 'Delivered', 'title': 'Delivered Orders'})
+    pending_count = models.Orders.objects.filter(customer=customer, status='Pending').count()
+    to_ship_count = models.Orders.objects.filter(customer=customer, status__in=['Processing', 'Order Confirmed']).count()
+    to_receive_count = models.Orders.objects.filter(customer=customer, status='Out for Delivery').count()
+    delivered_count = models.Orders.objects.filter(customer=customer, status='Delivered').count()
+    cancelled_count = models.Orders.objects.filter(customer=customer, status='Cancelled').count()
+    waiting_count = models.Orders.objects.filter(customer=customer, cancellation_status='requested').count()
+    return render(request, 'ecom/orders_tabbed.html', {
+        'orders_with_items': orders_with_items,
+        'active_tab': 'delivered',
+        'pending_count': pending_count,
+        'to_ship_count': to_ship_count,
+        'to_receive_count': to_receive_count,
+        'delivered_count': delivered_count,
+        'cancelled_count': cancelled_count,
+        'waiting_count': waiting_count,
+    })
 
 @login_required(login_url='customerlogin')
 def cancelled_orders_view(request):
@@ -1578,10 +1654,10 @@ def cancelled_orders_view(request):
             line_total = Decimal(item.price) * item.quantity
             total += line_total
             custom_items.append({
-                'custom_item': item,
+                'item': item,
                 'size': item.size,
                 'quantity': item.quantity,
-                'price': item.price,
+                'unit_price': item.price,
                 'line_total': line_total,
             })
         
@@ -1602,7 +1678,22 @@ def cancelled_orders_view(request):
             'delivery_fee': delivery_fee,
             'grand_total': grand_total,
         })
-    return render(request, 'ecom/order_status_page.html', {'orders_with_items': orders_with_items, 'status': 'Cancelled', 'title': 'Cancelled Orders'})
+    pending_count = models.Orders.objects.filter(customer=customer, status='Pending').count()
+    to_ship_count = models.Orders.objects.filter(customer=customer, status__in=['Processing', 'Order Confirmed']).count()
+    to_receive_count = models.Orders.objects.filter(customer=customer, status='Out for Delivery').count()
+    delivered_count = models.Orders.objects.filter(customer=customer, status='Delivered').count()
+    cancelled_count = models.Orders.objects.filter(customer=customer, status='Cancelled').count()
+    waiting_count = models.Orders.objects.filter(customer=customer, cancellation_status='requested').count()
+    return render(request, 'ecom/orders_tabbed.html', {
+        'orders_with_items': orders_with_items,
+        'active_tab': 'cancelled',
+        'pending_count': pending_count,
+        'to_ship_count': to_ship_count,
+        'to_receive_count': to_receive_count,
+        'delivered_count': delivered_count,
+        'cancelled_count': cancelled_count,
+        'waiting_count': waiting_count,
+    })
 
 @login_required(login_url='customerlogin')
 def waiting_for_cancellation_view(request):
@@ -1662,7 +1753,22 @@ def waiting_for_cancellation_view(request):
             'delivery_fee': delivery_fee,
             'grand_total': grand_total,
         })
-    return render(request, 'ecom/order_status_page.html', {'orders_with_items': orders_with_items, 'status': 'Waiting for Cancellation', 'title': 'Waiting for Cancellation'})
+    pending_count = models.Orders.objects.filter(customer=customer, status='Pending').count()
+    to_ship_count = models.Orders.objects.filter(customer=customer, status__in=['Processing', 'Order Confirmed']).count()
+    to_receive_count = models.Orders.objects.filter(customer=customer, status='Out for Delivery').count()
+    delivered_count = models.Orders.objects.filter(customer=customer, status='Delivered').count()
+    cancelled_count = models.Orders.objects.filter(customer=customer, status='Cancelled').count()
+    waiting_count = models.Orders.objects.filter(customer=customer, cancellation_status='requested').count()
+    return render(request, 'ecom/orders_tabbed.html', {
+        'orders_with_items': orders_with_items,
+        'active_tab': 'waiting',
+        'pending_count': pending_count,
+        'to_ship_count': to_ship_count,
+        'to_receive_count': to_receive_count,
+        'delivered_count': delivered_count,
+        'cancelled_count': cancelled_count,
+        'waiting_count': waiting_count,
+    })
 
 @login_required(login_url='customerlogin')
 def cart_page(request):
@@ -1766,11 +1872,23 @@ def add_to_cart_view(request, pk):
 
     new_quantity = existing_quantity + quantity
 
-    response = render(request, 'ecom/index.html', {
-        'products': products,
-        'product_count_in_cart': product_count_in_cart,
-        'redirect_to': next_page
-    })
+    # Prepare response depending on request type (AJAX vs normal)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if is_ajax:
+        from django.http import JsonResponse
+        response = JsonResponse({
+            'success': True,
+            'message': f"{product.name} (Size: {size}) added to cart successfully!",
+            'product_id': pk,
+            'size': size,
+            'quantity': new_quantity,
+        })
+    else:
+        response = render(request, 'ecom/index.html', {
+            'products': products,
+            'product_count_in_cart': product_count_in_cart,
+            'redirect_to': next_page
+        })
     response.set_cookie(cookie_key, f"{size}:{new_quantity}")
 
     # Update product_ids cookie to include product_{pk}_{size}
@@ -1788,7 +1906,22 @@ def add_to_cart_view(request, pk):
         updated_product_ids = product_key
     response.set_cookie('product_ids', updated_product_ids)
 
-    messages.info(request, product.name + f' (Size: {size}) added to cart successfully!')
+    # Recalculate cart count after update for client-side UI
+    try:
+        cart_count = len(set([k for k in updated_product_ids.split('|') if k])) if updated_product_ids else 0
+    except Exception:
+        cart_count = 0
+
+    # If AJAX, include cart_count in JSON response
+    if is_ajax and hasattr(response, 'content'):
+        # Update JSON payload with cart_count
+        import json
+        payload = json.loads(response.content)
+        payload['cart_count'] = cart_count
+        response.content = json.dumps(payload)
+
+    # Do not push a global success message to avoid cluttering the cart view.
+    # Cart count and UI are updated via AJAX or context; no session message needed.
 
     return response
 
@@ -2040,6 +2173,12 @@ def send_feedback_view(request):
 @never_cache
 def customer_home_view(request):
     products = models.Product.objects.all()
+    # Annotate products with average rating and review count for accurate stars
+    from django.db.models import Avg, Count
+    products = products.annotate(
+        average_rating=Avg('productreview__rating'),
+        review_count=Count('productreview')
+    )
     
     # Cart count logic
     if 'product_ids' in request.COOKIES:
@@ -2591,23 +2730,74 @@ def my_order_view(request):
     except models.Customer.DoesNotExist:
         messages.error(request, 'Customer profile not found. Please contact support.')
         return redirect('customer-home')
-    orders = models.Orders.objects.filter(customer=customer).order_by('-order_date')
+
+    # Build counts for tab badges
+    pending_count = models.Orders.objects.filter(customer=customer, status='Pending').count()
+    to_ship_count = models.Orders.objects.filter(customer=customer, status__in=['Processing', 'Order Confirmed']).count()
+    to_receive_count = models.Orders.objects.filter(customer=customer, status='Out for Delivery').count()
+    delivered_count = models.Orders.objects.filter(customer=customer, status='Delivered').count()
+    cancelled_count = models.Orders.objects.filter(customer=customer, status='Cancelled').count()
+    waiting_count = models.Orders.objects.filter(customer=customer, cancellation_status='requested').count()
+
+    # Gather all orders with detailed items similar to status views
+    orders = models.Orders.objects.filter(customer=customer).order_by('-order_date', '-created_at')
     orders_with_items = []
     for order in orders:
         order_items = models.OrderItem.objects.filter(order=order)
-        total_price = 0
+        products = []
+        total = Decimal('0.00')
         for item in order_items:
-            total_price += item.price * item.quantity
-        order.total = total_price
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            products.append({
+                'item': item,
+                'size': item.size,
+                'quantity': item.quantity,
+                'line_total': line_total,
+            })
+
+        custom_order_items = models.CustomOrderItem.objects.filter(order=order)
+        custom_items = []
+        for item in custom_order_items:
+            line_total = Decimal(item.price) * item.quantity
+            total += line_total
+            custom_items.append({
+                'item': item,
+                'size': item.size,
+                'quantity': item.quantity,
+                'unit_price': item.price,
+                'line_total': line_total,
+            })
+
+        vat_amount = total * Decimal(12) / Decimal(112)
+        net_subtotal = total - vat_amount
+        delivery_fee = order.delivery_fee if order.delivery_fee else Decimal('50.00')
+        grand_total = total + Decimal(delivery_fee)
+
         orders_with_items.append({
             'order': order,
-            'items': order_items
+            'products': products,
+            'custom_items': custom_items,
+            'subtotal': total,
+            'total': total,
+            'net_subtotal': net_subtotal,
+            'vat_amount': vat_amount,
+            'delivery_fee': delivery_fee,
+            'grand_total': grand_total,
         })
-    template = 'ecom/my_order.html'
-    # Serve partial if requested via AJAX for inline tabs
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        template = 'ecom/fragments/my_orders_list.html'
-    return render(request, template, {'orders_with_items': orders_with_items})
+
+    context = {
+        'orders_with_items': orders_with_items,
+        'active_tab': 'all',
+        'pending_count': pending_count,
+        'to_ship_count': to_ship_count,
+        'to_receive_count': to_receive_count,
+        'delivered_count': delivered_count,
+        'cancelled_count': cancelled_count,
+        'waiting_count': waiting_count,
+    }
+
+    return render(request, 'ecom/orders_tabbed.html', context)
 
 @login_required(login_url='customerlogin')
 @user_passes_test(is_customer)

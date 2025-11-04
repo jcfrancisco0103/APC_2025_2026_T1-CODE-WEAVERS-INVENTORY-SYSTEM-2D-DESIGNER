@@ -383,6 +383,44 @@
             {% endif %}
             {% endfor %}
             </div>
+
+            <!-- Completed / Delivered Section -->
+            <div class="order-section">
+                {% for product, order in group_items %}
+                {% if order.status == 'Delivered' or order.status == 'Completed' %}
+                <article class="card">
+                    <div class="card-body">
+                        <ul class="row" style="margin-left:20px;margin-top:20px;">
+                            <li class="col-md-4">
+                                <figure class="itemside mb-3">
+                                    <div class="aside"><img src="{% static product.product_image.url %}" class="img-sm border"></div>
+                                    <figcaption class="info align-self-center">
+                                        <p class="title"><strong>Name : </strong>{{product.name}} <br> <strong>Description : </strong>{{product.description}} <br> <strong>Price : </strong>₱{{product.price}}</p>
+                                    </figcaption>
+                                </figure>
+                            </li>
+                            <li class="col-md-4">
+                            </li>
+                            <li class="col-md-4">
+                                <div class="col"> <strong>Status:</strong> <br>
+                                    <td> <span class="label label-success" style="font-size: 12px; border-radius: 30px;">{{order.status}}</span></td>
+                                </div> <br>
+                                <a class="btn btn-primary btn-sm rounded-0" style="text-decoration:none;" href="{% url 'download-invoice' order.id product.id  %}" target="_blank"><i class="fa fa-download " style="font-size: 12px;height:auto"></i> Download Invoice</a>
+                                <a class="btn btn-outline-success btn-sm rounded-0" style="text-decoration:none;" href="{% url 'product-detail' product.id %}?from=review#review-form"><i class="fa fa-star" style="font-size: 12px;height:auto"></i> Rate & Review</a>
+                            </li>
+                        </ul>
+                        <hr>
+                        <div class="track">
+                            <div class="step active"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-spinner"></i> </span> <span class="text">Order Pending</span> </div>
+                            <div class="step active"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-check"></i> </span> <span class="text"> Order Confirmed</span> </div>
+                            <div class="step active"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-truck"></i> </span> <span class="text"> On the way </span> </div>
+                            <div class="step active"> <span class="icon"> <i style="padding-top:.2em; padding-right:.5em;" class="fa fa-home"></i> </span> <span class="text">Delivered</span> </div>
+                        </div>
+                    </div>
+                </article><br>
+            {% endif %}
+            {% endfor %}
+            </div>
     </div>
     {% endfor %}
 </div>

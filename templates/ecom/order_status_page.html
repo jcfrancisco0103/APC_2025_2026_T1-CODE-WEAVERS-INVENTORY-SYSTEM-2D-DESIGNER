@@ -114,7 +114,14 @@
                                 <tbody>
                                     {% for item in order_dict.products %}
                                     <tr>
-                                        <td>{{ item.item.product.name }}</td>
+                                        <td>
+                                            {{ item.item.product.name }}
+                                            {% if order_dict.order.status == 'Delivered' or order_dict.order.status == 'Completed' %}
+                                            <a href="{% url 'product-detail' item.item.product.id %}?from=review&order_item_id={{ item.item.id }}#review-form" class="btn btn-sm btn-outline-success ml-2" title="Rate & Review">
+                                                <i class="fa fa-star"></i> Rate & Review
+                                            </a>
+                                            {% endif %}
+                                        </td>
                                         <td>
                                             {% if item.item.product.product_image %}
                                                 <img src="{{ item.item.product.product_image.url }}" 

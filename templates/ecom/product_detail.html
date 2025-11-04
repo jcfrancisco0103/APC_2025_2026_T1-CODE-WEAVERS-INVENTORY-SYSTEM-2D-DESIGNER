@@ -44,7 +44,8 @@
                     <p>{{ product.description|default:"No description available." }}</p>
                 </div>
 
-                <!-- Add to Cart Form -->
+                <!-- Add to Cart Form (hidden in review mode) -->
+                {% if not review_mode %}
                 <form method="post" action="{% url 'add-to-cart' product.id %}" class="mt-4">
                     {% csrf_token %}
                     <div class="row">
@@ -80,6 +81,17 @@
                         {% endif %}
                     </div>
                 </form>
+                {% else %}
+                <div class="alert alert-secondary mt-4" role="alert">
+                    You’re reviewing your purchase.
+                    {% if purchased_size %}
+                        <strong>Size:</strong> {{ purchased_size }}
+                    {% endif %}
+                    {% if purchased_quantity %}
+                        <strong class="ms-3">Quantity:</strong> {{ purchased_quantity }}
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -90,7 +102,7 @@
             <h3>Customer Reviews</h3>
             
             <!-- Add Review Form (for authenticated users who purchased the product) -->
-            {% if user.is_authenticated %}
+            {% if user.is_authenticated and can_review %}
             <div class="add-review-section mb-4">
                 <h5>Write a Review</h5>
                 <form id="review-form" data-product-id="{{ product.id }}">
@@ -112,6 +124,10 @@
                     </div>
                     <button type="submit" class="btn btn-success">Submit Review</button>
                 </form>
+            </div>
+            {% elif user.is_authenticated %}
+            <div class="alert alert-info" role="alert">
+                You can rate and comment after your order for this product is delivered.
             </div>
             {% endif %}
 
@@ -145,41 +161,7 @@
         </div>
     </div>
 
-    <!-- Related Products -->
-    {% if related_products %}
-    <div class="row mt-5">
-        <div class="col-12">
-            <h3>Related Products</h3>
-            <div class="row">
-                {% for related_product in related_products %}
-                <div class="col-md-3 mb-3">
-                    <div class="card">
-                        {% if related_product.product_image %}
-                            <img src="{{ related_product.product_image.url }}" class="card-img-top" alt="{{ related_product.name }}" style="height: 200px; object-fit: cover;">
-                        {% endif %}
-                        <div class="card-body">
-                            <h6 class="card-title">{{ related_product.name }}</h6>
-                            <p class="card-text text-primary">₱{{ related_product.price }}</p>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <a href="{% url 'product-detail' related_product.id %}" class="btn btn-sm btn-outline-primary">View Details</a>
-                                {% if user.is_authenticated %}
-                                <button type="button" class="btn btn-sm btn-outline-danger wishlist-btn-related" data-product-id="{{ related_product.id }}">
-                                    {% if related_product.id in wishlist_product_ids %}
-                                        <i class="fas fa-heart" style="color: #ff6b6b;"></i>
-                                    {% else %}
-                                        <i class="far fa-heart"></i>
-                                    {% endif %}
-                                </button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
+    
 </div>
 
 <style>
@@ -263,39 +245,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Related products wishlist functionality
-    const relatedWishlistBtns = document.querySelectorAll('.wishlist-btn-related');
-    relatedWishlistBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const productId = this.dataset.productId;
-            const isInWishlist = this.innerHTML.includes('fas fa-heart');
-            const url = isInWishlist ? 
-                `/remove-from-wishlist/${productId}/` : 
-                `/add-to-wishlist/${productId}/`;
-            
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    'Content-Type': 'application/json',
-                },
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (isInWishlist) {
-                        this.innerHTML = '<i class="far fa-heart"></i>';
-                    } else {
-                        this.innerHTML = '<i class="fas fa-heart" style="color: #ff6b6b;"></i>';
-                    }
-                }
-                console.log(data.message);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        });
-    });
+    // (Removed) Related products wishlist functionality
 
     // Review form submission
     const reviewForm = document.getElementById('review-form');

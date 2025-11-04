@@ -1,0 +1,124 @@
+{% extends 'ecom/customer_base.html' %}
+{% load static %}
+{% load humanize %}
+{% block content %}
+
+<style>
+  .orders-tabs { display:flex; gap:32px; align-items:center; border-bottom:1px solid #eee; padding:0 8px; }
+  .orders-tab { padding:14px 4px; font-size:16px; color:#333; cursor:pointer; text-decoration:none; position:relative; }
+  .orders-tab:hover { color:#e64a19; }
+  .orders-tab.active { color:#e64a19; font-weight:600; }
+  .orders-tab.active::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:3px; background:#ff6d00; border-radius:2px; }
+  .orders-search { margin:16px 8px 24px; display:flex; align-items:center; gap:8px; border:1px solid #ddd; padding:10px 12px; border-radius:6px; color:#888; }
+  .orders-search input { border:none; outline:none; width:100%; font-size:14px; }
+
+  /* Cards (borrowed from order_status_page for consistent look) */
+  .card { position:relative; display:flex; flex-direction:column; background:#fff; border:1px solid rgba(0,0,0,.1); border-radius:6px; margin:12px 8px; }
+  .card-header { padding:14px 16px; background:#f8f9fa; border-bottom:1px solid rgba(0,0,0,.08); }
+  .card-body { padding:16px; }
+  .order-details { display:flex; justify-content:space-between; align-items:center; }
+  .order-meta { font-size:0.9rem; color:#6c757d; }
+  .order-status { font-size:0.85rem; padding:4px 8px; border-radius:4px; font-weight:500; }
+  .status-pending { background:#ffeeba; color:#856404; }
+  .status-processing { background:#b8daff; color:#004085; }
+  .status-order-confirmed { background:#c3e6cb; color:#155724; }
+  .status-out-for-delivery { background:#bee5eb; color:#0c5460; }
+  .status-delivered { background:#d4edda; color:#155724; }
+  .status-cancelled { background:#f8d7da; color:#721c24; }
+  .product-image { max-width:80px; height:60px; object-fit:cover; border-radius:4px; border:1px solid #ddd; }
+</style>
+
+<div class="container">
+  <div class="orders-tabs">
+    <a href="{% url 'my-order' %}" class="orders-tab {% if active_tab == 'all' %}active{% endif %}">All</a>
+    <a href="{% url 'pending-orders' %}" class="orders-tab {% if active_tab == 'pending' %}active{% endif %}">To Pay{% if pending_count %} ({{ pending_count }}){% endif %}</a>
+    <a href="{% url 'to-ship-orders' %}" class="orders-tab {% if active_tab == 'to_ship' %}active{% endif %}">To Ship{% if to_ship_count %} ({{ to_ship_count }}){% endif %}</a>
+    <a href="{% url 'to-receive-orders' %}" class="orders-tab {% if active_tab == 'to_receive' %}active{% endif %}">To Receive{% if to_receive_count %} ({{ to_receive_count }}){% endif %}</a>
+    <a href="{% url 'delivered-orders' %}" class="orders-tab {% if active_tab == 'delivered' %}active{% endif %}">Completed{% if delivered_count %} ({{ delivered_count }}){% endif %}</a>
+    <a href="{% url 'cancelled-orders' %}" class="orders-tab {% if active_tab == 'cancelled' %}active{% endif %}">Cancelled{% if cancelled_count %} ({{ cancelled_count }}){% endif %}</a>
+    <a href="{% url 'waiting-for-cancellation' %}" class="orders-tab {% if active_tab == 'waiting' %}active{% endif %}">Return Refund{% if waiting_count %} ({{ waiting_count }}){% endif %}</a>
+  </div>
+
+  <div class="orders-search">
+    <i class="fa fa-search"></i>
+    <input type="text" placeholder="You can search by Seller Name, Order ID or Product name" />
+  </div>
+
+  {% if not orders_with_items %}
+    <div class="alert alert-info" style="margin: 0 8px;">No orders found.</div>
+  {% endif %}
+
+  {% for order_dict in orders_with_items %}
+    <div class="card">
+      <div class="card-header">
+        <div class="order-details">
+          <div>
+            <strong>Order ID: {{ order_dict.order.order_ref|default:"N/A" }}</strong>
+            <span class="order-meta ml-3">Placed on {{ order_dict.order.created_at|date:"M d, Y" }}</span>
+          </div>
+          <span class="order-status status-{{ order_dict.order.status|slugify }}">{{ order_dict.order.status }}</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-8">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Image</th>
+                  <th>Size</th>
+                  <th>Quantity</th>
+                  <th>Price</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in order_dict.products %}
+                <tr>
+                  <td>{{ item.item.product.name }}</td>
+                  <td>
+                    {% if item.item.product.product_image %}
+                      <img src="{{ item.item.product.product_image.url }}" alt="{{ item.item.product.name }}" class="product-image" />
+                    {% else %}
+                      <span class="text-muted">No image</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ item.size }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>₱{{ item.item.price|floatformat:2 }}</td>
+                  <td>₱{{ item.line_total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+                {% for custom in order_dict.custom_items %}
+                <tr>
+                  <td>{{ custom.item.product_name|default:"Custom Jersey" }}</td>
+                  <td><span class="text-muted">Custom</span></td>
+                  <td>{{ custom.size }}</td>
+                  <td>{{ custom.quantity }}</td>
+                  <td>₱{{ custom.unit_price|floatformat:2 }}</td>
+                  <td>₱{{ custom.line_total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="col-md-4">
+            <div class="mb-3"><strong>Subtotal:</strong> ₱{{ order_dict.total|floatformat:2 }}</div>
+            <div class="mb-3"><strong>VAT (12% of VAT-inclusive):</strong> ₱{{ order_dict.vat_amount|floatformat:2 }}</div>
+            <div class="mb-3"><strong>Delivery Fee:</strong> ₱{{ order_dict.delivery_fee|floatformat:2 }}</div>
+            <div class="mb-3"><strong>Grand Total:</strong> ₱{{ order_dict.grand_total|floatformat:2 }}</div>
+            <div class="mt-3">
+              <a href="{% url 'my-order-pk' order_dict.order.id %}" class="btn btn-outline-primary btn-sm">View Details</a>
+              {% if order_dict.order.can_request_cancellation %}
+                <a href="{% url 'approve-cancellation' order_dict.order.id %}" class="btn btn-outline-danger btn-sm">Request Cancellation</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+{% endblock content %}

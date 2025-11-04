@@ -518,47 +518,7 @@ body {
             <div class="navbar-middle">
                 <ul class="nav-links">
                     <li class="upper-links"><a class="links" href="/customer-home">Home</a></li>
-                    <li class="upper-links dropdown">
-                        <a class="links dropdown-toggle" href="#" id="orderDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            Track Orders
-                        </a>
-                        <div class="dropdown-menu" aria-labelledby="orderDropdown">
-                            <a class="dropdown-item" href="{% url 'pending-orders' %}">
-                                <div class="item-left">
-                                    <i class="fa fa-clock-o"></i>
-                                    <span>Pending Orders</span>
-                                </div>
-                                {% if pending_count %}<span class="status-badge pending">{{ pending_count }}</span>{% endif %}
-                            </a>
-                            <a class="dropdown-item" href="{% url 'to-ship-orders' %}">
-                                <div class="item-left">
-                                    <i class="fa fa-ship" aria-hidden="true"></i>
-                                    <span>To Ship</span>
-                                </div>
-                            </a>
-                            <a class="dropdown-item" href="{% url 'to-receive-orders' %}">
-                                <div class="item-left">
-                                    <i class="fa fa-truck"></i>
-                                    <span>To Receive</span>
-                                </div>
-                                {% if to_receive_count %}<span class="status-badge receiving">{{ to_receive_count }}</span>{% endif %}
-                            </a>
-                            <a class="dropdown-item" href="{% url 'cancelled-orders' %}">
-                                <div class="item-left">
-                                    <i class="fa fa-times-circle"></i>
-                                    <span>Cancelled</span>
-                                </div>
-                                {% if cancelled_count %}<span class="status-badge cancelled">{{ cancelled_count }}</span>{% endif %}
-                            </a>
-                            <a class="dropdown-item" href="{% url 'delivered-orders' %}">
-                                <div class="item-left">
-                                    <i class="fa fa-check-circle"></i>
-                                    <span>Delivered</span>
-                                </div>
-                                {% if delivered_count %}<span class="status-badge delivered">{{ delivered_count }}</span>{% endif %}
-                            </a>
-                        </div>
-                    </li>
+                    <li class="upper-links"><a class="links" href="{% url 'my-order' %}">Track Orders</a></li>
                     <li class="upper-links"><a class="links" href="/wishlist">Wishlist</a></li>
                     <li class="upper-links"><a class="links" href="/jersey-designer">3D Designer</a></li>
                     <li class="upper-links"><a class="links" href="/about">About Us</a></li>

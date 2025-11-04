@@ -1123,12 +1123,34 @@
         
         <!-- Product Rating (if reviews exist) -->
         <div class="product-rating">
-          <div class="rating-stars">
+          <div class="rating-stars" style="cursor:pointer" onclick="openProductDetail('{{ product.id }}')">
             {% for i in "12345" %}
               <i class="fa fa-star{% if forloop.counter > product.average_rating|default:0 %}-o{% endif %}"></i>
             {% endfor %}
           </div>
           <span class="rating-count">({{ product.review_count|default:0 }} reviews)</span>
+        </div>
+
+        <!-- Latest Review Snippet -->
+        {% if product.latest_review %}
+        <div class="product-review-snippet" style="margin-top:8px; padding:10px; background:#f9fafb; border-radius:6px;">
+          {% if product.latest_review.review_text %}
+          <div class="review-text" style="font-size: 13px; color:#374151;">
+            “{{ product.latest_review.review_text|truncatechars:90 }}”
+          </div>
+          {% endif %}
+          <div class="review-meta" style="font-size: 12px; color:#6b7280; margin-top:4px;">
+            - {{ product.latest_review.customer.user.first_name|default:product.latest_review.customer.user.username }}
+            • {{ product.latest_review.created_at|naturaltime }}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- View Reviews Button -->
+        <div style="margin-top:10px;">
+          <button class="btn btn-sm btn-outline-primary view-reviews-btn" data-product-id="{{ product.id }}">
+            <i class="fa fa-comments"></i> View Reviews
+          </button>
         </div>
       </div>
     </div>
@@ -1375,30 +1397,46 @@
     updateStockMsg();
     updateAddToCartBtn();
 
-    // Add to cart click
+    // Add to cart click (AJAX, no page reload)
     addToCartBtn.onclick = function() {
       if (addToCartBtn.disabled) return;
-      // Submit via form or AJAX as needed
-      var form = document.createElement('form');
-      form.method = 'POST';
-      form.action = '/add-to-cart/' + product.id + '/';
-      var csrf = document.createElement('input');
-      csrf.type = 'hidden';
-      csrf.name = 'csrfmiddlewaretoken';
-      csrf.value = '{{ csrf_token }}';
-      form.appendChild(csrf);
-      var sizeInput = document.createElement('input');
-      sizeInput.type = 'hidden';
-      sizeInput.name = 'size';
-      sizeInput.value = selectedSize;
-      form.appendChild(sizeInput);
-      var qtyInputEl = document.createElement('input');
-      qtyInputEl.type = 'hidden';
-      qtyInputEl.name = 'quantity';
-      qtyInputEl.value = qtyInput.value;
-      form.appendChild(qtyInputEl);
-      document.body.appendChild(form);
-      form.submit();
+
+      function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+      }
+
+      const csrftoken = getCookie('csrftoken');
+      fetch('/add-to-cart/' + product.id + '/', {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrftoken,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          size: selectedSize || 'M',
+          quantity: qtyInput.value || '1',
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success) {
+          showNotification(data.message || 'Added to cart');
+          // Update cart count in navbar
+          if (typeof data.cart_count !== 'undefined') {
+            const counters = document.querySelectorAll('.item-number');
+            counters.forEach(el => { el.textContent = data.cart_count; });
+          }
+        } else {
+          showNotification('Could not add to cart');
+        }
+      })
+      .catch(() => {
+        showNotification('Network error adding to cart');
+      });
     };
   }
 
@@ -1431,16 +1469,17 @@
       });
     });
     
-    // Add form validation for detail modal
+    // Add form validation for detail modal (guard for initial absence)
     const detailForm = document.getElementById('detail-add-to-cart-form');
-    detailForm.addEventListener('submit', function(e) {
-      const sizeInput = this.querySelector('#detail-size-input');
-      
-      if (!sizeInput.value) {
-        e.preventDefault();
-        alert('Please select a size');
-      }
-    });
+    if (detailForm) {
+      detailForm.addEventListener('submit', function(e) {
+        const sizeInput = this.querySelector('#detail-size-input');
+        if (!sizeInput || !sizeInput.value) {
+          e.preventDefault();
+          alert('Please select a size');
+        }
+      });
+    }
     
     // Close modal on ESC key
     document.addEventListener('keydown', function(e) {
@@ -1526,14 +1565,17 @@
   
   // Enhanced search functionality with debouncing
   let searchTimeout;
-  document.querySelector('.search-box input').addEventListener('input', function() {
-    clearTimeout(searchTimeout);
-    const form = this.closest('form');
-    
-    searchTimeout = setTimeout(() => {
-      form.submit();
-    }, 500); // Wait 500ms after user stops typing
-  });
+  const searchInput = document.querySelector('.search-box input');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      const form = this.closest('form');
+      if (!form) return;
+      searchTimeout = setTimeout(() => {
+        form.submit();
+      }, 500); // Wait 500ms after user stops typing
+    });
+  }
 
   // Wishlist functionality with AJAX
   function toggleWishlist(element, event, productId) {
@@ -1556,6 +1598,7 @@
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest',
       }
     })
     .then(response => response.json())
@@ -1612,6 +1655,8 @@
       method: 'GET',
       headers: {
         'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
       }
     })
     .then(response => response.json())
@@ -1636,6 +1681,88 @@
   // Call loadWishlistStatus when page loads
   document.addEventListener('DOMContentLoaded', function() {
     loadWishlistStatus();
+  });
+</script>
+
+<!-- Reviews Modal -->
+<div id="reviewsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1050; align-items:center; justify-content:center;">
+  <div style="background:#fff; width:90%; max-width:700px; max-height:80vh; overflow:auto; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #eee;">
+      <h5 style="margin:0; font-weight:600; color:#111827;">Product Reviews</h5>
+      <button id="closeReviewsModal" class="btn btn-sm btn-light" style="border:1px solid #ddd;">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div id="reviewsModalBody" style="padding:16px;">
+      <div style="text-align:center; color:#6b7280;">Loading reviews…</div>
+    </div>
+  </div>
+  
+  <!-- Click catcher to close when clicking backdrop -->
+  <div id="reviewsBackdropCatcher" style="position:absolute; inset:0;"></div>
+</div>
+
+<script>
+  // Handle opening the Reviews modal and fetching data
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.view-reviews-btn');
+    if (btn) {
+      e.preventDefault();
+      const productId = btn.getAttribute('data-product-id');
+      const modal = document.getElementById('reviewsModal');
+      const body = document.getElementById('reviewsModalBody');
+      body.innerHTML = '<div style="text-align:center; color:#6b7280;">Loading reviews…</div>';
+      modal.style.display = 'flex';
+
+      fetch(`/product-reviews/${productId}/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+        .then(r => r.json())
+        .then(data => {
+          if (data.status !== 'success') {
+            body.innerHTML = '<div class="alert alert-warning">Hindi makuha ang reviews ngayon.</div>';
+            return;
+          }
+
+          if (!data.reviews || data.reviews.length === 0) {
+            body.innerHTML = '<div style="text-align:center; color:#6b7280;">Walang reviews para sa produktong ito.</div>';
+            return;
+          }
+
+          const items = data.reviews.map(rv => {
+            const date = rv.created_at || '';
+            const size = rv.size ? ` • Size: ${rv.size}` : '';
+            const qty = (rv.quantity || rv.quantity === 0) ? ` • Qty: ${rv.quantity}` : '';
+            const header = `
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-weight:600; color:#111827;">${rv.customer_name || 'Customer'}</div>
+                <small style="color:#6b7280;">${date}</small>
+              </div>`;
+            const ratingStars = Array.from({length:5}).map((_,i)=>
+              `<i class="fa ${i < (rv.rating||0) ? 'fa-star' : 'fa-star-o'}" style="color:#f59e0b;"></i>`
+            ).join('');
+            return `
+              <div style="padding:12px 0; border-bottom:1px solid #eee;">
+                ${header}
+                <div style="margin-top:4px;">${ratingStars}<span style="color:#6b7280; margin-left:6px; font-size:12px;">${size}${qty}</span></div>
+                ${rv.review_text ? `<div style="margin-top:8px; color:#374151;">${rv.review_text}</div>` : ''}
+              </div>
+            `;
+          }).join('');
+          body.innerHTML = items;
+        })
+        .catch(() => {
+          body.innerHTML = '<div class="alert alert-danger">Nagka-error habang kinukuha ang reviews.</div>';
+        });
+    }
+  });
+
+  // Close modal
+  function hideReviewsModal() {
+    const modal = document.getElementById('reviewsModal');
+    modal.style.display = 'none';
+  }
+  document.getElementById('closeReviewsModal').addEventListener('click', hideReviewsModal);
+  document.getElementById('reviewsBackdropCatcher').addEventListener('click', function(e){
+    if (e.target.id === 'reviewsBackdropCatcher') hideReviewsModal();
   });
 </script>
 

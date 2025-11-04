@@ -94,11 +94,12 @@ def add_review(request, product_id):
             customer = models.Customer.objects.get(user=request.user)
             product = models.Product.objects.get(id=product_id)
             
-            # Check if customer has purchased this product
-            has_purchased = models.Orders.objects.filter(
-                customer=customer,
+            # Check if customer has purchased and received (Delivered) this product
+            # via OrderItem entries linked to Orders
+            has_purchased = models.OrderItem.objects.filter(
+                order__customer=customer,
                 product=product,
-                status='Delivered'
+                order__status__in=['Delivered', 'Completed']
             ).exists()
             
             if not has_purchased:
@@ -144,6 +145,10 @@ def product_detail_view(request, product_id):
         in_wishlist = False
         user_review = None
         wishlist_product_ids = []
+        can_review = False
+        review_mode = False
+        purchased_size = None
+        purchased_quantity = None
         if request.user.is_authenticated and is_customer(request.user):
             try:
                 customer = models.Customer.objects.get(user=request.user)
@@ -155,6 +160,29 @@ def product_detail_view(request, product_id):
                     user_review = models.ProductReview.objects.get(customer=customer, product=product)
                 except models.ProductReview.DoesNotExist:
                     pass
+                # Determine if user can review: must have delivered order item for this product
+                can_review = models.OrderItem.objects.filter(
+                    order__customer=customer,
+                    product=product,
+                    order__status__in=['Delivered', 'Completed']
+                ).exists()
+
+                # Detect review mode via query params and pull purchased variant details
+                from_param = request.GET.get('from')
+                if from_param == 'review' and can_review:
+                    review_mode = True
+                    order_item_id = request.GET.get('order_item_id')
+                    order_item_qs = models.OrderItem.objects.filter(
+                        order__customer=customer,
+                        product=product,
+                        order__status__in=['Delivered', 'Completed']
+                    )
+                    if order_item_id:
+                        order_item_qs = order_item_qs.filter(id=order_item_id)
+                    order_item = order_item_qs.order_by('-id').first()
+                    if order_item:
+                        purchased_size = order_item.size
+                        purchased_quantity = order_item.quantity
             except models.Customer.DoesNotExist:
                 pass
         
@@ -179,12 +207,64 @@ def product_detail_view(request, product_id):
             'product_count_in_cart': product_count_in_cart,
             'related_products': related_products,
             'wishlist_product_ids': wishlist_product_ids,
+            'can_review': can_review,
+            'review_mode': review_mode,
+            'purchased_size': purchased_size,
+            'purchased_quantity': purchased_quantity,
         }
         return render(request, 'ecom/product_detail.html', context)
         
     except models.Product.DoesNotExist:
         messages.error(request, 'Product not found.')
         return redirect('customer-home')
+
+
+@login_required
+@user_passes_test(is_customer)
+def product_reviews_api(request, product_id):
+    try:
+        product = models.Product.objects.get(id=product_id)
+
+        reviews = (
+            models.ProductReview.objects
+            .filter(product=product)
+            .select_related('customer__user')
+            .order_by('-created_at')
+        )
+
+        results = []
+        for r in reviews:
+            order_item = (
+                models.OrderItem.objects
+                .filter(
+                    order__customer=r.customer,
+                    product=product,
+                    order__status__in=['Delivered', 'Completed']
+                )
+                .order_by('-id')
+                .first()
+            )
+
+            customer_name = (r.customer.user.first_name or r.customer.user.username)
+            if r.customer.user.last_name:
+                customer_name = f"{customer_name} {r.customer.user.last_name}"
+
+            results.append({
+                'customer_name': customer_name.strip(),
+                'rating': r.rating,
+                'review_text': r.review_text or '',
+                'created_at': r.created_at.strftime('%Y-%m-%d %H:%M'),
+                'size': getattr(order_item, 'size', None),
+                'quantity': getattr(order_item, 'quantity', None),
+            })
+
+        return JsonResponse({
+            'status': 'success',
+            'product_id': product.id,
+            'reviews': results,
+        })
+    except models.Product.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Product not found'}, status=404)
 
 # Newsletter functionality
 @csrf_protect

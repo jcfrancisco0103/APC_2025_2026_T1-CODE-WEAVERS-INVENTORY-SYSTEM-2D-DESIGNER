@@ -170,6 +170,7 @@ urlpatterns = [
     # Product reviews
     path('add-review/<int:product_id>/', wishlist_views.add_review, name='add-review'),
     path('product/<int:product_id>/', wishlist_views.product_detail_view, name='product-detail'),
+    path('product-reviews/<int:product_id>/', wishlist_views.product_reviews_api, name='product-reviews'),
     
     # Newsletter
     path('newsletter-signup/', wishlist_views.newsletter_signup, name='newsletter-signup'),
