@@ -17,13 +17,6 @@
       "src": "ecommerce/wsgi.py",
       "use": "@vercel/python",
       "config": { "maxLambdaSize": "15mb", "runtime": "python3.9" }
-    },
-    {
-      "src": "build_files.sh",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "staticfiles_build"
-      }
     }
   ],
   "routes": [
@@ -40,9 +33,8 @@
       "dest": "ecommerce/wsgi.py"
     }
   ],
+  "buildCommand": "",
   
-  "installCommand": "pip install -r requirements.txt",
-  "buildCommand": "python manage.py collectstatic --noinput && mkdir -p staticfiles_build/media && if [ -d media ]; then cp -r media/* staticfiles_build/media/; fi",
   "devCommand": "python manage.py runserver",
   "framework": null
 }
