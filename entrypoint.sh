@@ -12,5 +12,5 @@ echo "[entrypoint] Collecting static files..."
 python manage.py collectstatic --noinput --clear
 
 echo "[entrypoint] Starting Gunicorn..."
-exec gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --timeout ${GUNICORN_TIMEOUT:-120}
-
+PORT=${PORT:-8000}
+exec gunicorn ecommerce.wsgi:application --bind 0.0.0.0:${PORT} --workers ${GUNICORN_WORKERS:-3} --timeout ${GUNICORN_TIMEOUT:-120}
