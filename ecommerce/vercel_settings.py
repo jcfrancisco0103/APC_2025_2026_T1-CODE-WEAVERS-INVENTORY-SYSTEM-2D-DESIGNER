@@ -1,7 +1,8 @@
 from .settings import *
+import os
 
-# Production defaults for Vercel
-DEBUG = False
+# Production defaults for Vercel; allow temporary debug via env
+DEBUG = os.getenv('VERCEL_DEBUG', '') == '1'
 
 # Allow Vercel preview/production domains and your custom domains
 ALLOWED_HOSTS = [

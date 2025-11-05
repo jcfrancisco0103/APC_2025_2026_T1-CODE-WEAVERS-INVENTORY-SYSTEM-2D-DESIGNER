@@ -35,7 +35,15 @@ if os.environ.get('VERCEL'):
         import sys
         print(f"[WSGI] Migration step failed: {e}", file=sys.stderr)
 
-application = get_wsgi_application()
+# Create WSGI application with verbose error logging to Vercel console
+try:
+    application = get_wsgi_application()
+except Exception as e:
+    # Surface full traceback to stderr so Vercel shows details
+    import sys, traceback
+    print(f"[WSGI] Application init failed: {e}", file=sys.stderr)
+    traceback.print_exc()
+    raise
 
 # Expose 'app' alias for Vercel's Python runtime
 app = application
