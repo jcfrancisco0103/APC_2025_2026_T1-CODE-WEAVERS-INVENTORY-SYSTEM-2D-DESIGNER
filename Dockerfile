@@ -46,9 +46,8 @@ USER app
 # Expose port
 EXPOSE 8000
 
-# Copy entrypoint
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+# Copy entrypoint with correct ownership and permissions
+COPY --chown=app:app --chmod=0755 entrypoint.sh /app/entrypoint.sh
 
 # Use entrypoint to run migrations, collectstatic, then start gunicorn
 ENTRYPOINT ["/app/entrypoint.sh"]
