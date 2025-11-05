@@ -197,15 +197,26 @@ def get_transactions_by_month(request):
 
 def order_counts(request):
     if request.user.is_authenticated and is_customer(request.user):
-        customer = models.Customer.objects.get(user_id=request.user.id)
-        context = {
-            'pending_count': models.Orders.objects.filter(customer=customer, status='Pending').count(),
-            'to_ship_count': models.Orders.objects.filter(customer=customer, status='Processing').count(),
-            'to_receive_count': models.Orders.objects.filter(customer=customer, status='Shipping').count(),
-            'delivered_count': models.Orders.objects.filter(customer=customer, status='Delivered').count(),
-            'cancelled_count': models.Orders.objects.filter(customer=customer, status='Cancelled').count(),
-        }
-        return context
+        try:
+            customer = models.Customer.objects.get(user_id=request.user.id)
+            context = {
+                'pending_count': models.Orders.objects.filter(customer=customer, status='Pending').count(),
+                'to_ship_count': models.Orders.objects.filter(customer=customer, status='Processing').count(),
+                'to_receive_count': models.Orders.objects.filter(customer=customer, status='Shipping').count(),
+                'delivered_count': models.Orders.objects.filter(customer=customer, status='Delivered').count(),
+                'cancelled_count': models.Orders.objects.filter(customer=customer, status='Cancelled').count(),
+            }
+            return context
+        except Exception:
+            # When DB is not ready (cold start) or Customer record missing,
+            # avoid raising and return safe zero counts.
+            return {
+                'pending_count': 0,
+                'to_ship_count': 0,
+                'to_receive_count': 0,
+                'delivered_count': 0,
+                'cancelled_count': 0,
+            }
     return {}
 
 
