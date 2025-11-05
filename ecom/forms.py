@@ -1,7 +1,6 @@
 import re
 from django import forms
 from django.contrib.auth.models import User
-from django.db.utils import OperationalError, ProgrammingError
 from django.utils import timezone
 from django.contrib.auth.forms import AuthenticationForm
 from . import models
@@ -24,15 +23,8 @@ class CustomerUserForm(forms.ModelForm):
 
     def clean_username(self):
         username = self.cleaned_data.get('username')
-        if not username:
-            return username
-        try:
-            if User.objects.filter(username=username).exists():
-                raise forms.ValidationError("Unable to use this username. Please choose another.")
-        except (OperationalError, ProgrammingError):
-            # On serverless cold starts, the auth_user table may not be ready yet.
-            # Defer uniqueness validation until the actual create step.
-            return username
+        if username and User.objects.filter(username=username).exists():
+            raise forms.ValidationError("Unable to use this username. Please choose another.")
         return username
 
     def clean_email(self):
