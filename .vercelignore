@@ -17,7 +17,8 @@ logs/
 
 # Local heavy artifacts (do NOT exclude app static assets)
 # Keep media/ and static/ so WhiteNoise can serve them in serverless
-# If you use a CDN or cloud storage later, you can re-exclude as needed
+# Exclude large development apps and caches to keep function bundle small
+t-shirt-designer-webapp/
 
 # Large archives and binaries
 ecommerce.zip

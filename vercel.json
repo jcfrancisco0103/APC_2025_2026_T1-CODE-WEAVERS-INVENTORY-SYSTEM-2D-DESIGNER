@@ -7,21 +7,8 @@
     { "src": "media/**/*", "use": "@vercel/static" }
   ],
   "functions": {
-    "ecommerce/wsgi.py": {
-      "excludeFiles": [
-        "static/**",
-        "staticfiles/**",
-        "media/**",
-        "t-shirt-designer-webapp/**",
-        "logs/**",
-        "tests/**",
-        "ecommerce.zip",
-        "**/*.zip",
-        "**/*.tar",
-        "**/*.tgz",
-        "**/*.tar.gz",
-        "docs/**"
-      ]
+    "ecommerce/**": {
+      "excludeFiles": "media/**"
     }
   },
   "routes": [
