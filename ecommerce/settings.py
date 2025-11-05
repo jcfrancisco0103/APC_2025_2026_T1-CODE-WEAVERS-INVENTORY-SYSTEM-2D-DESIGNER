@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 
 import os
 from decouple import config
+from importlib.util import find_spec
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -79,6 +80,11 @@ INSTALLED_APPS = [
     'social_django',
 ]
 
+# Make social_django optional to prevent CI/runtime errors when not installed
+_SOCIAL_AUTH_AVAILABLE = find_spec('social_django') is not None
+if not _SOCIAL_AUTH_AVAILABLE:
+    INSTALLED_APPS = [app for app in INSTALLED_APPS if app != 'social_django']
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -114,6 +120,17 @@ TEMPLATES = [
         },
     },
 ]
+
+if not _SOCIAL_AUTH_AVAILABLE:
+    for tpl in TEMPLATES:
+        ctx = tpl.get('OPTIONS', {}).get('context_processors', [])
+        tpl['OPTIONS']['context_processors'] = [
+            cp for cp in ctx
+            if cp not in (
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
+            )
+        ]
 
 WSGI_APPLICATION = 'ecommerce.wsgi.application'
 
@@ -200,6 +217,12 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
 )
 
+if not _SOCIAL_AUTH_AVAILABLE:
+    AUTHENTICATION_BACKENDS = tuple(
+        b for b in AUTHENTICATION_BACKENDS
+        if not b.startswith('social_core.backends.')
+    )
+
 # Social Auth: Google OAuth2
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = config('GOOGLE_OAUTH_CLIENT_ID', default='')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = config('GOOGLE_OAUTH_CLIENT_SECRET', default='')
@@ -247,6 +270,16 @@ LOGGING = {
         },
     },
 }
+
+# If social-auth is not available, avoid defining pipeline to prevent import errors
+if not _SOCIAL_AUTH_AVAILABLE:
+    try:
+        SOCIAL_AUTH_PIPELINE = tuple(
+            p for p in SOCIAL_AUTH_PIPELINE
+            if not p.startswith('social_core.pipeline')
+        )
+    except NameError:
+        pass
 
 # Use default pipeline with an extra step to activate social users and ensure Customer profile
 SOCIAL_AUTH_PIPELINE = (
