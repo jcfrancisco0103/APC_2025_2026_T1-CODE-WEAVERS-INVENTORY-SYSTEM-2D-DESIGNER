@@ -420,6 +420,16 @@ def customer_signup_view(request):
 def multi_step_signup_view(request, step=1):
     """Multi-step signup process"""
     step = int(step)
+    # If running on Vercel, surface a friendly message during cold starts when DB migrations may still be running.
+    try:
+        import os
+        import pathlib
+        if os.environ.get('VERCEL') and request.method == 'POST' and not pathlib.Path('/tmp/.migrated').exists():
+            from django.contrib import messages
+            messages.error(request, 'System initialization in progress. Please try again in a few seconds.')
+            # Continue to render the form; DB-dependent validations are guarded.
+    except Exception:
+        pass
     
     # Avoid writing to session on GET to prevent DB errors on cold starts.
     # We'll only create/modify session data during POST handling.
@@ -554,7 +564,13 @@ def customer_login(request):
     if form.is_valid():
       username = form.cleaned_data['username']
       password = form.cleaned_data['password']
-      user = authenticate(request, username=username, password=password)
+      # Guard against DB readiness issues during cold starts
+      try:
+        from django.db.utils import OperationalError, ProgrammingError
+        user = authenticate(request, username=username, password=password)
+      except (OperationalError, ProgrammingError):
+        messages.error(request, 'System initialization in progress. Please try again shortly.')
+        return render(request, 'ecom/customerlogin.html', {'form': form})
       if user is not None:
         login(request, user)
         # Clear cart cookies after login
@@ -566,10 +582,14 @@ def customer_login(request):
         return response
       else:
         # Show bottom error via messages when username doesn't exist or password is wrong
-        if not User.objects.filter(username=username).exists():
-          messages.error(request, 'Account not found. Please try again')
-        else:
-          messages.error(request, 'Incorrect password')
+        try:
+          from django.db.utils import OperationalError, ProgrammingError
+          if not User.objects.filter(username=username).exists():
+            messages.error(request, 'Account not found. Please try again')
+          else:
+            messages.error(request, 'Incorrect password')
+        except (OperationalError, ProgrammingError):
+          messages.error(request, 'System initialization in progress. Please try again shortly.')
   else:
     form = CustomerLoginForm()
   return render(request, 'ecom/customerlogin.html', {'form': form})
