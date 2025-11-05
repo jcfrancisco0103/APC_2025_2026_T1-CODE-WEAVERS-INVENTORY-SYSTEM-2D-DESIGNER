@@ -1,16 +1,11 @@
 {
   "version": 2,
   "builds": [
-    { "src": "ecommerce/wsgi.py", "use": "@vercel/python" },
+    { "src": "ecommerce/wsgi.py", "use": "@vercel/python", "config": { "excludeFiles": "media/**" } },
     { "src": "static/**/*", "use": "@vercel/static" },
     { "src": "staticfiles/**/*", "use": "@vercel/static" },
     { "src": "media/**/*", "use": "@vercel/static" }
   ],
-  "functions": {
-    "ecommerce/wsgi.py": {
-      "excludeFiles": "media/**"
-    }
-  },
   "routes": [
     { "src": "/static/(.*)", "dest": "static/$1" },
     { "src": "/staticfiles/(.*)", "dest": "staticfiles/$1" },
