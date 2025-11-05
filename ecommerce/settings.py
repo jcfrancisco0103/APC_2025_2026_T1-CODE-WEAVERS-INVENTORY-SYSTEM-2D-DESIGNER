@@ -41,6 +41,7 @@ ALLOWED_HOSTS = [
     '147.185.221.20:4104',
     'worksteamwear.shop',
     'www.worksteamwear.shop',
+    '47.129.161.196',
     '*',
 ]
 
@@ -59,6 +60,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://www.worksteamwear.shop',
     'https://www.worksteamwear.shop',
     'https://ecom.worksteamwear.shop',
+    'http://ecom.worksteamwear.shop',
 ]
 
 
