@@ -1,7 +1,7 @@
 {
   "version": 2,
   "builds": [
-    { "src": "ecommerce/wsgi.py", "use": "@vercel/python", "config": { "excludeFiles": ["media/**", "static/**", "staticfiles/**", "ecommerce.zip", "pbl/**", "docs/**", "tests/**", "logs/**", "t-shirt-designer-webapp/**"], "includeFiles": ["ecommerce/**", "templates/**", "manage.py", "requirements.txt", "ecommerce/vercel_settings.py"] } },
+    { "src": "ecommerce/wsgi.py", "use": "@vercel/python", "config": { "excludeFiles": ["media/**", "static/**", "staticfiles/**", "ecommerce.zip", "pbl/**", "docs/**", "tests/**", "logs/**", "t-shirt-designer-webapp/**", "**/node_modules/**", "**/__pycache__/**", "**/*.pyc", "**/*.pyo", "**/*.pyd", "**/*.log", "**/*.zip", "**/*.tar", "**/*.tar.gz"], "includeFiles": ["ecommerce/**", "templates/**", "manage.py", "requirements.txt"] } },
     { "src": "static/**/*", "use": "@vercel/static" },
     { "src": "staticfiles/**/*", "use": "@vercel/static" },
     { "src": "media/**/*", "use": "@vercel/static" }

@@ -1,14 +1,13 @@
 Django==4.2.7
-Pillow==11.3.0
 requests==2.25.1
 django-widget-tweaks==1.4.8
 python-decouple>=3.8
 django-humanize==0.1.2
 tzdata==2025.2
-social-auth-app-django==5.4.0
+# social-auth-app-django temporarily removed to reduce function size
 beautifulsoup4==4.12.3
 whitenoise==6.7.0
 dj-database-url==2.1.0
 
 # Removed for Vercel serverless size:
-# xhtml2pdf, reportlab, selenium, psycopg2-binary, gunicorn
+# xhtml2pdf, reportlab, selenium, psycopg2-binary, gunicorn, Pillow, social-auth-app-django
