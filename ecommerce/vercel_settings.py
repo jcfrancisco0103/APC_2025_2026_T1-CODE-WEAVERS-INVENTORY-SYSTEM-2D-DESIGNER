@@ -38,3 +38,13 @@ CSRF_TRUSTED_ORIGINS = [
 # Social auth should report HTTPS behind proxy
 SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
 
+# Static files and sessions adjustments for Vercel serverless
+# Avoid ManifestStaticFilesStorage which requires collectstatic manifest
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+
+# WhiteNoise: disable long caching and enable autorefresh for ephemeral FS
+WHITENOISE_MAX_AGE = 0
+WHITENOISE_AUTOREFRESH = True
+
+# Use cookie-based sessions to avoid DB writes during cold starts
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
