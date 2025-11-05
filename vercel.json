@@ -3,6 +3,21 @@
   "builds": [
     { "src": "ecommerce/wsgi.py", "use": "@vercel/python" }
   ],
+  "excludeFiles": [
+    "pbl/**",
+    "static/**",
+    "staticfiles/**",
+    "media/**",
+    "logs/**",
+    "tests/**",
+    "docs/**",
+    "t-shirt-designer-webapp/**",
+    "ecommerce.zip",
+    "*.zip",
+    "*.tar",
+    "*.tar.gz",
+    "*.tgz"
+  ],
   "routes": [
     { "src": "/(.*)", "dest": "ecommerce/wsgi.py" }
   ]

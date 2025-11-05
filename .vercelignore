@@ -17,6 +17,9 @@ logs/
 
 # Local media/static outputs (keep DB to allow read-only serverless usage)
 staticfiles/
+static/
+media/
+t-shirt-designer-webapp/
 
 # Large archives and binaries
 ecommerce.zip
