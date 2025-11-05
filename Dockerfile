@@ -46,5 +46,9 @@ USER app
 # Expose port
 EXPOSE 8000
 
-# Use exec form for better signal handling
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Copy entrypoint
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Use entrypoint to run migrations, collectstatic, then start gunicorn
+ENTRYPOINT ["/app/entrypoint.sh"]
